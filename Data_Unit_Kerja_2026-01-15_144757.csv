@@ -1,0 +1,47 @@
+﻿DATA UNIT KERJA (UKER);;;;;;;
+No;Kode Sub Kanca;Sub Kanca;;Kode Kanca;Kanca;Kanwil;Kode Kanwil
+1;1337;KCP CIKURUBUK ;KCP;100;KC Tasikmalaya;Bandung ;F
+2;1437;KCP CIAWI TASIKMALAYA ;KCP;100;KC Tasikmalaya;Bandung ;F
+3;1809;KCP MANGUNSARKORO ;KCP;105;KC Cianjur;Bandung ;F
+4;2230;KCP CIRANJANG ;KCP;105;KC Cianjur;Bandung ;F
+5;2231;KCP SUKANAGARA;KCP;105;KC Cianjur;Bandung ;F
+6;517;KCP Cipanas ;KCP;105;KC Cianjur;Bandung ;F
+7;601;KCP Weru;KCP;107;KC Cirebon Kartini;Bandung ;F
+8;1139;KCP RANCAEKEK ;KCP;132;KC Majalaya ;Bandung ;F
+9;1070;KCP CIJERAH ;KCP;137;KC Cimahi ;Bandung ;F
+10;1071;KCP CIMINDI ;KCP;137;KC Cimahi ;Bandung ;F
+11;656;KCP PADALARANG;KCP;137;KC Cimahi ;Bandung ;F
+12;542;KCP Pangandaran ;KCP;162;KC Banjar ;Bandung ;F
+13;1355;KCP CICURUG ;KCP;181;KC Cibadak;Bandung ;F
+14;543;KCP Pelabuhan Ratu;KCP;181;KC Cibadak;Bandung ;F
+15;1345;KCP GUNTUR;KCP;25;KC Garut;Bandung ;F
+16;1346;KCP CIKAJANG;KCP;25;KC Garut;Bandung ;F
+17;599;KCP Patrol;KCP;28;KC Indramayu;Bandung ;F
+18;1077;KCP PETA;KCP;286;KC Bandung Dewi Sartika ;Bandung ;F
+19;1596;KCP TELKOM BANDUNG;KCP;286;KC Bandung Dewi Sartika ;Bandung ;F
+20;2202;KCP KOSAMBI BANDUNG ;KCP;286;KC Bandung Dewi Sartika ;Bandung ;F
+21;650;KCP OTTO ISKANDARDINATA ;KCP;286;KC Bandung Dewi Sartika ;Bandung ;F
+22;674;KCP PASAR BARU BANDUNG DS ;KCP;286;KC Bandung Dewi Sartika ;Bandung ;F
+23;2105;KCP SUCI;KCP;354;KC Bandung A.H. Nasution;Bandung ;F
+24;1141;KCP BUAH BATU ;KCP;389;KC Bandung Martadinata;Bandung ;F
+25;2104;KCP RIAU;KCP;389;KC Bandung Martadinata;Bandung ;F
+26;2103;KCP CIBADUYUT ;KCP;401;KC Bandung Kopo ;Bandung ;F
+27;2155;KCP TAMAN KOPO INDAH;KCP;401;KC Bandung Kopo ;Bandung ;F
+28;2184;KCP TAMAN KOPO INDAH II ;KCP;401;KC Bandung Kopo ;Bandung ;F
+29;600;KCP SUMBER SARI ;KCP;401;KC Bandung Kopo ;Bandung ;F
+30;593;KCP ITB ;KCP;405;KC Bandung Dago ;Bandung ;F
+31;1078;KCP SUMBER;KCP;406;KC Cirebon Gunung Jati;Bandung ;F
+32;2128;KCP CILEDUG CIREBON ;KCP;406;KC Cirebon Gunung Jati;Bandung ;F
+33;1107;KCP METRO TRADE CENTER;KCP;407;KC Bandung Sukarno Hatta;Bandung ;F
+34;2058;KCP BATUNUNGGAL ;KCP;407;KC Bandung Sukarno Hatta;Bandung ;F
+35;2154;KCP ANTAPANI;KCP;407;KC Bandung Sukarno Hatta;Bandung ;F
+36;2000;KCP CIHAMPELAS;KCP;408;KC Bandung Setiabudi;Bandung ;F
+37;2016;KCP LEMBANG ;KCP;408;KC Bandung Setiabudi;Bandung ;F
+38;655;KCP SETRASARI ;KCP;408;KC Bandung Setiabudi;Bandung ;F
+39;1108;KCP ABDUL FATAH ;KCP;46;KC Majalengka ;Bandung ;F
+40;673;KCP PASIR KALIKI;KCP;5;KC Bandung AA ;Bandung ;F
+41;675;KCP RAJAWALI BANDUNG;KCP;5;KC Bandung AA ;Bandung ;F
+42;1140;KCP BANJARAN;KCP;544;KC Soreang;Bandung ;F
+43;2162;KCP PASAR PELITA;KCP;92;KC Sukabumi ;Bandung ;F
+44;2229;KCP SURADE;KCP;92;KC Sukabumi ;Bandung ;F
+45;598;KCP BRI JATINANGOR;KCP;94;KC Sumedang ;Bandung ;F

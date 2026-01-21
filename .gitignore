@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+
+# Build files
+build/
+dist/
+*.spec
+*.exe
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Raw/mentah CSV files (tidak perlu di-host)
+csv kcp/mentah*.csv
+csv konsol/mentah*.csv
+csv mikro/mentah*.csv
+csv ritel/mentah*.csv
+
+# Update scripts (tidak perlu di-host)
+csv kcp/update*.py
+csv konsol/update*.py
+csv mikro/update*.py
+csv ritel/update*.py
+
+# Python scripts (development only)
+*.py
+
+# Batch files
+*.bat
+
+# Text files
+*.txt

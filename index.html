@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DPK Chart Viewer - Real-time</title>
+    <meta
+      name="description"
+      content="Dashboard visualisasi grafik DPK dengan update real-time"
+    />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="styles.css?v=12" />
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-content">
+          <div class="logo">
+            <div class="logo-icon">📊</div>
+            <div class="logo-text">
+              <h1>DPK Chart Viewer</h1>
+              <span class="tagline">Real-time Data Visualization</span>
+            </div>
+          </div>
+          <div class="header-actions">
+            <div class="status-indicator" id="statusIndicator">
+              <span class="status-dot"></span>
+              <span class="status-text">Ready</span>
+            </div>
+            <button class="theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
+              <span class="theme-icon">🌙</span>
+            </button>
+            <div class="last-update" id="lastUpdate">
+              <span>Last update:</span>
+              <span id="lastUpdateTime">-</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Controls Panel -->
+        <section class="controls-panel glass-card">
+          <div class="controls-header">
+            <h2>⚙️ Pengaturan</h2>
+          </div>
+          <div class="controls-grid">
+            <!-- Category Selector -->
+            <div class="control-group">
+              <label for="categorySelect">Kategori</label>
+              <select id="categorySelect" class="select-input">
+                <option value="kcp">KCP</option>
+                <option value="konsol">Konsol</option>
+                <option value="mikro">Mikro</option>
+                <option value="ritel">Ritel</option>
+              </select>
+            </div>
+
+            <!-- Metric Selector -->
+            <div class="control-group">
+              <label for="metricSelect">Metrik</label>
+              <select id="metricSelect" class="select-input">
+                <option value="dpk">DPK</option>
+                <option value="casa">CASA</option>
+                <option value="depo">Deposito</option>
+                <option value="giro">Giro</option>
+                <option value="tabungan">Tabungan</option>
+              </select>
+            </div>
+
+            <!-- Area Selector -->
+            <div class="control-group">
+              <label for="areaSelect">Area</label>
+              <select id="areaSelect" class="select-input">
+                <option value="all">Semua Area</option>
+                <option value="1">Area 1 - Jatibarang, Purwakarta, Indramayu, Subang, Pamanukan</option>
+                <option value="2">Area 2 - Cirebon Gunung Jati, Kuningan, Sumedang, Cirebon Kartini, Majalengka</option>
+                <option value="3">Area 3 - Garut, Ciamis, Tasikmalaya, Banjar, Singaparna</option>
+                <option value="4">Area 4 - Sukabumi, Cibadak, Majalaya, Soreang, Cimahi, Cianjur</option>
+                <option value="5">Area 5 - Bandung Kopo, Dewi Sartika, AH Nasution, Naripan, AA, Setiabudi, Sukarno Hatta, Dago, Martadinata</option>
+              </select>
+            </div>
+
+            <!-- Auto Refresh Toggle -->
+            <div class="control-group">
+              <label>Auto Refresh</label>
+              <div class="toggle-container">
+                <label class="toggle">
+                  <input type="checkbox" id="autoRefreshToggle" />
+                  <span class="toggle-slider"></span>
+                </label>
+                <select id="refreshInterval" class="select-input small">
+                  <option value="5000">5 detik</option>
+                  <option value="10000" selected>10 detik</option>
+                  <option value="30000">30 detik</option>
+                  <option value="60000">1 menit</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Manual Refresh Button -->
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="refreshBtn" class="btn btn-primary">
+                <span class="btn-icon">🔄</span>
+                Refresh Data
+              </button>
+            </div>
+          </div>
+        </section>
+
+
+
+
+        <!-- Monthly Comparison Section -->
+        <section class="comparison-section glass-card">
+          <div class="comparison-header">
+            <h2>📊 Perbandingan Bulanan</h2>
+            <div class="comparison-info">
+              <span class="month-badge dec">Desember</span>
+              <span class="vs-text">vs</span>
+              <span class="month-badge jan">Januari</span>
+            </div>
+          </div>
+          
+
+
+          <!-- Comparison Chart -->
+          <div class="comparison-chart-wrapper">
+            <div class="comparison-chart-header">
+              <h3>📈 Grafik Perbandingan</h3>
+              <div class="comparison-uker-select">
+                <label for="comparisonUkerSelect">Unit Kerja:</label>
+                <select id="comparisonUkerSelect" class="select-input">
+                  <!-- Will be populated dynamically -->
+                </select>
+              </div>
+            </div>
+            <div class="comparison-chart-container">
+              <canvas id="comparisonChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Comparison Table -->
+          <div class="comparison-table-section" style="margin-top: var(--spacing-xl);">
+            <h3 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">📋 Tabel Perbandingan Semua Unit Kerja</h3>
+            <div class="comparison-table-container">
+            <table class="comparison-table" id="comparisonTable">
+              <thead>
+                <tr>
+                  <th>Unit Kerja</th>
+                  <th>Rata-rata Des</th>
+                  <th>Rata-rata Jan</th>
+                  <th>Selisih</th>
+                  <th>Perubahan</th>
+                </tr>
+              </thead>
+              <tbody id="comparisonTableBody">
+                <!-- Will be populated dynamically -->
+              </tbody>
+            </table>
+            </div>
+          </div>
+          <div class="comparison-summary" id="comparisonSummary">
+            <!-- Summary stats will be added here -->
+          </div>
+        </section>
+
+        <!-- Summary Cards -->
+        <section class="summary-section">
+          <div class="summary-card glass-card">
+            <div class="summary-icon">📊</div>
+            <div class="summary-content">
+              <span class="summary-label">Total Unit Kerja</span>
+              <span class="summary-value" id="totalUkers">0</span>
+            </div>
+          </div>
+          <div class="summary-card glass-card">
+            <div class="summary-icon">📈</div>
+            <div class="summary-content">
+              <span class="summary-label">Nilai Tertinggi</span>
+              <span class="summary-value" id="maxValue">0</span>
+            </div>
+          </div>
+          <div class="summary-card glass-card">
+            <div class="summary-icon">📉</div>
+            <div class="summary-content">
+              <span class="summary-label">Nilai Terendah</span>
+              <span class="summary-value" id="minValue">0</span>
+            </div>
+          </div>
+          <div class="summary-card glass-card">
+            <div class="summary-icon">📅</div>
+            <div class="summary-content">
+              <span class="summary-label">Periode Data</span>
+              <span class="summary-value" id="dataPeriod">-</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- PDF Download Section -->
+        <section class="pdf-section glass-card">
+          <div class="pdf-header">
+            <h2>📄 Download PDF per Area</h2>
+            <p class="pdf-description">Download laporan Time Series DPK dalam format PDF, dikelompokkan berdasarkan Area (KC + KCP)</p>
+          </div>
+          <div class="pdf-grid" id="pdfGrid">
+            <div class="pdf-card">
+              <div class="pdf-icon">📁</div>
+              <div class="pdf-info">
+                <h3>Area 1</h3>
+                <p>Jatibarang, Purwakarta, Indramayu, Subang, Pamanukan</p>
+                <span class="pdf-meta">5 KC + 1 KCP</span>
+              </div>
+              <a href="pdf_area_combined/TIME_SERIES_AREA_1_20260121.pdf" class="btn btn-primary btn-view" target="_blank">
+                <span>📄</span> Lihat PDF
+              </a>
+            </div>
+            <div class="pdf-card">
+              <div class="pdf-icon">📁</div>
+              <div class="pdf-info">
+                <h3>Area 2</h3>
+                <p>Cirebon Gunung Jati, Kuningan, Sumedang, Cirebon Kartini, Majalengka</p>
+                <span class="pdf-meta">5 KC + 4 KCP</span>
+              </div>
+              <a href="pdf_area_combined/TIME_SERIES_AREA_2_20260121.pdf" class="btn btn-primary btn-view" target="_blank">
+                <span>📄</span> Lihat PDF
+              </a>
+            </div>
+            <div class="pdf-card">
+              <div class="pdf-icon">📁</div>
+              <div class="pdf-info">
+                <h3>Area 3</h3>
+                <p>Garut, Ciamis, Tasikmalaya, Banjar, Singaparna</p>
+                <span class="pdf-meta">5 KC + 3 KCP</span>
+              </div>
+              <a href="pdf_area_combined/TIME_SERIES_AREA_3_20260121.pdf" class="btn btn-primary btn-view" target="_blank">
+                <span>📄</span> Lihat PDF
+              </a>
+            </div>
+            <div class="pdf-card">
+              <div class="pdf-icon">📁</div>
+              <div class="pdf-info">
+                <h3>Area 4</h3>
+                <p>Sukabumi, Cibadak, Majalaya, Soreang, Cimahi, Cianjur</p>
+                <span class="pdf-meta">6 KC + 11 KCP</span>
+              </div>
+              <a href="pdf_area_combined/TIME_SERIES_AREA_4_20260121.pdf" class="btn btn-primary btn-view" target="_blank">
+                <span>📄</span> Lihat PDF
+              </a>
+            </div>
+            <div class="pdf-card">
+              <div class="pdf-icon">📁</div>
+              <div class="pdf-info">
+                <h3>Area 5</h3>
+                <p>Bandung Kopo, Dewi Sartika, AH Nasution, Naripan, AA, Setiabudi, Sukarno Hatta, Dago, Martadinata</p>
+                <span class="pdf-meta">9 KC + 15 KCP</span>
+              </div>
+              <a href="pdf_area_combined/TIME_SERIES_AREA_5_20260121.pdf" class="btn btn-primary btn-view" target="_blank">
+                <span>📄</span> Lihat PDF
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>DPK Chart Viewer © 2026 | Real-time CSV Visualization</p>
+      </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <span>Memuat data...</span>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="app.js?v=9"></script>
+  </body>
+</html>
