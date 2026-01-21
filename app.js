@@ -1045,7 +1045,7 @@ function updateComparisonChart() {
       },
       title: {
         display: true,
-        text: `Perbandingan ${uker}`,
+        text: [`Perbandingan ${uker}`, '(dalam juta)'],
         color: getThemeColors().text,
         font: {
           size: 14,
@@ -1107,7 +1107,7 @@ function updateComparisonChart() {
   
   if (state.comparisonChart) {
     state.comparisonChart.data = chartData;
-    state.comparisonChart.options.plugins.title.text = `Perbandingan ${uker}`;
+    state.comparisonChart.options.plugins.title.text = [`Perbandingan ${uker}`, '(dalam juta)'];
     state.comparisonChart.update('none');
   } else {
     const ctx = canvas.getContext('2d');
