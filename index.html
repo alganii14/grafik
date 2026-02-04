@@ -129,10 +129,20 @@
         <section class="comparison-section glass-card">
           <div class="comparison-header">
             <h2>📊 Perbandingan Bulanan</h2>
-            <div class="comparison-info">
-              <span class="month-badge dec">Desember</span>
+            <div class="comparison-month-selector">
+              <div class="month-select-group">
+                <label for="month1Select">Bulan 1:</label>
+                <select id="month1Select" class="select-input">
+                  <!-- Will be populated dynamically -->
+                </select>
+              </div>
               <span class="vs-text">vs</span>
-              <span class="month-badge jan">Januari</span>
+              <div class="month-select-group">
+                <label for="month2Select">Bulan 2:</label>
+                <select id="month2Select" class="select-input">
+                  <!-- Will be populated dynamically -->
+                </select>
+              </div>
             </div>
           </div>
           

@@ -113,6 +113,8 @@ const state = {
   chart: null,
   comparisonChart: null,
   selectedComparisonUker: null,
+  selectedMonth1: null,
+  selectedMonth2: null,
   autoRefreshEnabled: false,
   refreshIntervalId: null,
   lastDataHash: null,
@@ -673,6 +675,7 @@ async function loadData(showLoadingState = true) {
       populateUkerGrid(data.ukerNames);
       updateChartTitle();
       updateChart();
+      populateMonthSelectors();
       populateComparisonUkerSelect();
       updateComparisonChart();
       updateComparisonTable();
@@ -808,10 +811,31 @@ function initEventListeners() {
 // =====================================
 
 /**
+ * Get available months from chart data
+ */
+function getAvailableMonths() {
+  if (!state.chartData) return [];
+  
+  const months = new Set();
+  state.chartData.dates.forEach(date => {
+    const dateLower = date.toLowerCase();
+    if (dateLower.includes('dec') || dateLower.includes('des')) {
+      months.add('Desember');
+    } else if (dateLower.includes('jan')) {
+      months.add('Januari');
+    } else if (dateLower.includes('feb')) {
+      months.add('Februari');
+    }
+  });
+  
+  return Array.from(months);
+}
+
+/**
  * Calculate monthly comparison data (filtered by area)
  */
 function calculateMonthlyComparison() {
-  if (!state.chartData) return null;
+  if (!state.chartData || !state.selectedMonth1 || !state.selectedMonth2) return null;
 
   const { dates, data, ukerNames } = state.chartData;
   
@@ -827,20 +851,31 @@ function calculateMonthlyComparison() {
     });
   }
   
-  // Separate December and January data
-  const decemberIndices = [];
-  const januaryIndices = [];
+  // Get month keywords for filtering
+  const getMonthKeywords = (month) => {
+    if (month === 'Desember') return ['dec', 'des'];
+    if (month === 'Januari') return ['jan'];
+    if (month === 'Februari') return ['feb'];
+    return [];
+  };
+  
+  const month1Keywords = getMonthKeywords(state.selectedMonth1);
+  const month2Keywords = getMonthKeywords(state.selectedMonth2);
+  
+  // Separate data by selected months
+  const month1Indices = [];
+  const month2Indices = [];
   
   dates.forEach((date, index) => {
     const dateLower = date.toLowerCase();
-    if (dateLower.includes('dec') || dateLower.includes('des')) {
-      decemberIndices.push(index);
-    } else if (dateLower.includes('jan')) {
-      januaryIndices.push(index);
+    if (month1Keywords.some(kw => dateLower.includes(kw))) {
+      month1Indices.push(index);
+    } else if (month2Keywords.some(kw => dateLower.includes(kw))) {
+      month2Indices.push(index);
     }
   });
   
-  if (decemberIndices.length === 0 || januaryIndices.length === 0) {
+  if (month1Indices.length === 0 || month2Indices.length === 0) {
     return null;
   }
   
@@ -851,30 +886,30 @@ function calculateMonthlyComparison() {
     
     const ukerData = data[uker];
     
-    // Calculate December average
-    const decValues = decemberIndices
+    // Calculate month 1 average
+    const month1Values = month1Indices
       .map(i => ukerData[i])
       .filter(v => v && v > 0);
-    const decAvg = decValues.length > 0 
-      ? decValues.reduce((a, b) => a + b, 0) / decValues.length 
+    const month1Avg = month1Values.length > 0 
+      ? month1Values.reduce((a, b) => a + b, 0) / month1Values.length 
       : 0;
     
-    // Calculate January average
-    const janValues = januaryIndices
+    // Calculate month 2 average
+    const month2Values = month2Indices
       .map(i => ukerData[i])
       .filter(v => v && v > 0);
-    const janAvg = janValues.length > 0 
-      ? janValues.reduce((a, b) => a + b, 0) / janValues.length 
+    const month2Avg = month2Values.length > 0 
+      ? month2Values.reduce((a, b) => a + b, 0) / month2Values.length 
       : 0;
     
     // Calculate change
-    const difference = janAvg - decAvg;
-    const percentChange = decAvg !== 0 ? ((janAvg - decAvg) / decAvg) * 100 : 0;
+    const difference = month2Avg - month1Avg;
+    const percentChange = month1Avg !== 0 ? ((month2Avg - month1Avg) / month1Avg) * 100 : 0;
     
     comparisonData.push({
       uker,
-      decAvg,
-      janAvg,
+      month1Avg,
+      month2Avg,
       difference,
       percentChange
     });
@@ -890,14 +925,25 @@ function calculateMonthlyComparison() {
  * Get monthly data for a specific unit kerja
  */
 function getMonthlyDataForUker(uker) {
-  if (!state.chartData || !state.chartData.data[uker]) return null;
+  if (!state.chartData || !state.chartData.data[uker] || !state.selectedMonth1 || !state.selectedMonth2) return null;
   
   const { dates, data } = state.chartData;
   const ukerData = data[uker];
   
-  // Separate December and January data with day numbers
-  const decemberData = [];
-  const januaryData = [];
+  // Get month keywords for filtering
+  const getMonthKeywords = (month) => {
+    if (month === 'Desember') return ['dec', 'des'];
+    if (month === 'Januari') return ['jan'];
+    if (month === 'Februari') return ['feb'];
+    return [];
+  };
+  
+  const month1Keywords = getMonthKeywords(state.selectedMonth1);
+  const month2Keywords = getMonthKeywords(state.selectedMonth2);
+  
+  // Separate data by selected months with day numbers
+  const month1Data = [];
+  const month2Data = [];
   
   dates.forEach((date, index) => {
     const dateLower = date.toLowerCase();
@@ -905,14 +951,14 @@ function getMonthlyDataForUker(uker) {
     const dayMatch = date.match(/^(\d+)/);
     const day = dayMatch ? parseInt(dayMatch[1]) : index + 1;
     
-    if (dateLower.includes('dec') || dateLower.includes('des')) {
-      decemberData.push({ day, value: ukerData[index] || 0 });
-    } else if (dateLower.includes('jan')) {
-      januaryData.push({ day, value: ukerData[index] || 0 });
+    if (month1Keywords.some(kw => dateLower.includes(kw))) {
+      month1Data.push({ day, value: ukerData[index] || 0 });
+    } else if (month2Keywords.some(kw => dateLower.includes(kw))) {
+      month2Data.push({ day, value: ukerData[index] || 0 });
     }
   });
   
-  return { decemberData, januaryData };
+  return { month1Data, month2Data };
 }
 
 /**
@@ -962,64 +1008,135 @@ function populateComparisonUkerSelect() {
 }
 
 /**
- * Update comparison chart with Dec vs Jan lines
+ * Populate month selectors
+ */
+function populateMonthSelectors() {
+  const month1Select = document.getElementById('month1Select');
+  const month2Select = document.getElementById('month2Select');
+  
+  if (!month1Select || !month2Select) return;
+  
+  const availableMonths = getAvailableMonths();
+  
+  // Clear existing options
+  month1Select.innerHTML = '';
+  month2Select.innerHTML = '';
+  
+  // Populate month selectors
+  availableMonths.forEach(month => {
+    const option1 = document.createElement('option');
+    option1.value = month;
+    option1.textContent = month;
+    month1Select.appendChild(option1);
+    
+    const option2 = document.createElement('option');
+    option2.value = month;
+    option2.textContent = month;
+    month2Select.appendChild(option2);
+  });
+  
+  // Set default selections
+  if (availableMonths.length >= 2) {
+    state.selectedMonth1 = availableMonths[availableMonths.length - 2];
+    state.selectedMonth2 = availableMonths[availableMonths.length - 1];
+    month1Select.value = state.selectedMonth1;
+    month2Select.value = state.selectedMonth2;
+  } else if (availableMonths.length === 1) {
+    state.selectedMonth1 = availableMonths[0];
+    state.selectedMonth2 = availableMonths[0];
+    month1Select.value = state.selectedMonth1;
+    month2Select.value = state.selectedMonth2;
+  }
+  
+  // Remove old event listeners and add new ones
+  const newMonth1Select = month1Select.cloneNode(true);
+  const newMonth2Select = month2Select.cloneNode(true);
+  month1Select.parentNode.replaceChild(newMonth1Select, month1Select);
+  month2Select.parentNode.replaceChild(newMonth2Select, month2Select);
+  
+  newMonth1Select.addEventListener('change', (e) => {
+    state.selectedMonth1 = e.target.value;
+    updateComparisonChart();
+    updateComparisonTable();
+  });
+  
+  newMonth2Select.addEventListener('change', (e) => {
+    state.selectedMonth2 = e.target.value;
+    updateComparisonChart();
+    updateComparisonTable();
+  });
+}
+
+/**
+ * Update comparison chart with selected months
  */
 function updateComparisonChart() {
   const canvas = document.getElementById('comparisonChart');
   if (!canvas) return;
   
   const uker = state.selectedComparisonUker;
-  if (!uker) return;
+  if (!uker || !state.selectedMonth1 || !state.selectedMonth2) return;
   
   const monthlyData = getMonthlyDataForUker(uker);
   if (!monthlyData) return;
   
-  const { decemberData, januaryData } = monthlyData;
+  const { month1Data, month2Data } = monthlyData;
   
   // Create labels (days 1-31)
   const maxDay = Math.max(
-    ...decemberData.map(d => d.day),
-    ...januaryData.map(d => d.day)
+    ...month1Data.map(d => d.day),
+    ...month2Data.map(d => d.day)
   );
   const labels = Array.from({ length: maxDay }, (_, i) => i + 1);
   
   // Map data to days
-  const decValues = labels.map(day => {
-    const found = decemberData.find(d => d.day === day);
+  const month1Values = labels.map(day => {
+    const found = month1Data.find(d => d.day === day);
     return found ? found.value : null;
   });
   
-  const janValues = labels.map(day => {
-    const found = januaryData.find(d => d.day === day);
+  const month2Values = labels.map(day => {
+    const found = month2Data.find(d => d.day === day);
     return found ? found.value : null;
   });
+  
+  // Get colors based on month selection
+  const getMonthColor = (month) => {
+    if (month === 'Desember') return { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' };
+    if (month === 'Januari') return { border: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' };
+    if (month === 'Februari') return { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
+    return { border: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
+  };
+  
+  const month1Color = getMonthColor(state.selectedMonth1);
+  const month2Color = getMonthColor(state.selectedMonth2);
   
   const chartData = {
     labels: labels,
     datasets: [
       {
-        label: 'Desember',
-        data: decValues,
-        borderColor: '#f59e0b',
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        label: state.selectedMonth1,
+        data: month1Values,
+        borderColor: month1Color.border,
+        backgroundColor: month1Color.bg,
         borderWidth: 2,
         tension: 0.3,
         pointRadius: 4,
         pointHoverRadius: 6,
-        pointBackgroundColor: '#f59e0b',
+        pointBackgroundColor: month1Color.border,
         fill: false,
         spanGaps: true
       },
       {
-        label: 'Januari',
-        data: janValues,
-        borderColor: '#64748b',
-        backgroundColor: 'rgba(100, 116, 139, 0.1)',
+        label: state.selectedMonth2,
+        data: month2Values,
+        borderColor: month2Color.border,
+        backgroundColor: month2Color.bg,
         borderWidth: 2,
         tension: 0.3,
         pointRadius: 4,
         pointHoverRadius: 6,
-        pointBackgroundColor: '#64748b',
+        pointBackgroundColor: month2Color.border,
         fill: false,
         spanGaps: true
       }
@@ -1134,7 +1251,7 @@ function updateComparisonTable() {
     comparisonTableBody.innerHTML = `
       <tr>
         <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-          Data perbandingan tidak tersedia (membutuhkan data Desember dan Januari)
+          Pilih bulan untuk melihat perbandingan
         </td>
       </tr>
     `;
@@ -1153,8 +1270,8 @@ function updateComparisonTable() {
     tableHTML += `
       <tr>
         <td class="uker-name" title="${item.uker}">${item.uker}</td>
-        <td class="value">${formatNumber(item.decAvg)}</td>
-        <td class="value">${formatNumber(item.janAvg)}</td>
+        <td class="value">${formatNumber(item.month1Avg)}</td>
+        <td class="value">${formatNumber(item.month2Avg)}</td>
         <td class="value change ${changeClass}">${item.difference >= 0 ? '+' : ''}${formatNumber(item.difference)}</td>
         <td>
           <span class="change-badge ${changeClass}">
@@ -1166,6 +1283,16 @@ function updateComparisonTable() {
   });
   
   comparisonTableBody.innerHTML = tableHTML;
+  
+  // Update table headers
+  const table = document.getElementById('comparisonTable');
+  if (table && state.selectedMonth1 && state.selectedMonth2) {
+    const headers = table.querySelectorAll('th');
+    if (headers.length >= 5) {
+      headers[1].textContent = state.selectedMonth1;
+      headers[2].textContent = state.selectedMonth2;
+    }
+  }
   
   // Calculate summary statistics
   const positiveCount = comparisonData.filter(d => d.percentChange > 0).length;

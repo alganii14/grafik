@@ -920,6 +920,29 @@ body::before {
   font-weight: 600;
 }
 
+.comparison-month-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.month-select-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.month-select-group label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.month-select-group select {
+  min-width: 120px;
+}
+
 .comparison-info {
   display: flex;
   align-items: center;
@@ -1334,6 +1357,21 @@ body::before {
     flex-direction: column;
     text-align: center;
     gap: var(--spacing-xs);
+  }
+  
+  .comparison-month-selector {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .month-select-group {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .month-select-group select {
+    width: 100%;
   }
 
   .comparison-header h2 {
