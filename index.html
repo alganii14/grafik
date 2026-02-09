@@ -20,7 +20,7 @@
       rel="stylesheet"
     />
 
-    <link rel="stylesheet" href="styles.css?v=12" />
+    <link rel="stylesheet" href="styles.css?v=13" />
   </head>
   <body>
     <div class="app-container">
@@ -122,9 +122,6 @@
           </div>
         </section>
 
-
-
-
         <!-- Monthly Comparison Section -->
         <section class="comparison-section glass-card">
           <div class="comparison-header">
@@ -163,10 +160,12 @@
               <canvas id="comparisonChart"></canvas>
             </div>
           </div>
+
+
         </section>
 
-        <!-- PDF Download Section -->
-        <section class="pdf-section glass-card">
+        <!-- PDF Download Section (hidden) -->
+        <section class="pdf-section glass-card" style="display: none;">
           <div class="pdf-header">
             <h2>📄 Download PDF per Area</h2>
             <p class="pdf-description">Download laporan Time Series DPK dalam format PDF, dikelompokkan berdasarkan Area (KC + KCP)</p>
@@ -179,7 +178,7 @@
                 <p>Jatibarang, Purwakarta, Indramayu, Subang, Pamanukan</p>
                 <span class="pdf-meta">5 KC + 1 KCP</span>
               </div>
-              <a href="pdf_area_combined/TIME_SERIES_AREA_1_20260202.pdf" class="btn btn-primary btn-view" target="_blank">
+              <a href="pdf_area_combined/TIME_SERIES_AREA_1_20260208.pdf" class="btn btn-primary btn-view" target="_blank">
                 <span>📄</span> Lihat PDF
               </a>
             </div>
@@ -190,7 +189,7 @@
                 <p>Cirebon Gunung Jati, Kuningan, Sumedang, Cirebon Kartini, Majalengka</p>
                 <span class="pdf-meta">5 KC + 4 KCP</span>
               </div>
-              <a href="pdf_area_combined/TIME_SERIES_AREA_2_20260202.pdf" class="btn btn-primary btn-view" target="_blank">
+              <a href="pdf_area_combined/TIME_SERIES_AREA_2_20260208.pdf" class="btn btn-primary btn-view" target="_blank">
                 <span>📄</span> Lihat PDF
               </a>
             </div>
@@ -201,7 +200,7 @@
                 <p>Garut, Ciamis, Tasikmalaya, Banjar, Singaparna</p>
                 <span class="pdf-meta">5 KC + 3 KCP</span>
               </div>
-              <a href="pdf_area_combined/TIME_SERIES_AREA_3_20260202.pdf" class="btn btn-primary btn-view" target="_blank">
+              <a href="pdf_area_combined/TIME_SERIES_AREA_3_20260208.pdf" class="btn btn-primary btn-view" target="_blank">
                 <span>📄</span> Lihat PDF
               </a>
             </div>
@@ -212,7 +211,7 @@
                 <p>Sukabumi, Cibadak, Majalaya, Soreang, Cimahi, Cianjur</p>
                 <span class="pdf-meta">6 KC + 11 KCP</span>
               </div>
-              <a href="pdf_area_combined/TIME_SERIES_AREA_4_20260202.pdf" class="btn btn-primary btn-view" target="_blank">
+              <a href="pdf_area_combined/TIME_SERIES_AREA_4_20260208.pdf" class="btn btn-primary btn-view" target="_blank">
                 <span>📄</span> Lihat PDF
               </a>
             </div>
@@ -223,7 +222,7 @@
                 <p>Bandung Kopo, Dewi Sartika, AH Nasution, Naripan, AA, Setiabudi, Sukarno Hatta, Dago, Martadinata</p>
                 <span class="pdf-meta">9 KC + 15 KCP</span>
               </div>
-              <a href="pdf_area_combined/TIME_SERIES_AREA_5_20260202.pdf" class="btn btn-primary btn-view" target="_blank">
+              <a href="pdf_area_combined/TIME_SERIES_AREA_5_20260208.pdf" class="btn btn-primary btn-view" target="_blank">
                 <span>📄</span> Lihat PDF
               </a>
             </div>
@@ -246,6 +245,6 @@
     <!-- Error Toast -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="app.js?v=9"></script>
+    <script src="app.js?v=10"></script>
   </body>
 </html>

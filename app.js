@@ -811,24 +811,53 @@ function initEventListeners() {
 // =====================================
 
 /**
- * Get available months from chart data
+ * Get available months from chart data (chronologically ordered)
  */
 function getAvailableMonths() {
   if (!state.chartData) return [];
   
+  // Define month order for chronological sorting
+  const monthOrder = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  
+  const monthKeywordMap = {
+    'jan': 'Januari',
+    'feb': 'Februari',
+    'mar': 'Maret',
+    'apr': 'April',
+    'may': 'Mei',
+    'mei': 'Mei',
+    'jun': 'Juni',
+    'jul': 'Juli',
+    'aug': 'Agustus',
+    'sep': 'September',
+    'oct': 'Oktober',
+    'okt': 'Oktober',
+    'nov': 'November',
+    'dec': 'Desember',
+    'des': 'Desember',
+  };
+  
   const months = new Set();
   state.chartData.dates.forEach(date => {
     const dateLower = date.toLowerCase();
-    if (dateLower.includes('dec') || dateLower.includes('des')) {
-      months.add('Desember');
-    } else if (dateLower.includes('jan')) {
-      months.add('Januari');
-    } else if (dateLower.includes('feb')) {
-      months.add('Februari');
+    for (const [keyword, monthName] of Object.entries(monthKeywordMap)) {
+      if (dateLower.includes(keyword)) {
+        months.add(monthName);
+        break;
+      }
     }
   });
   
-  return Array.from(months);
+  // Sort chronologically
+  return Array.from(months).sort((a, b) => {
+    const yearA = a === 'Desember' ? 2025 : 2026;
+    const yearB = b === 'Desember' ? 2025 : 2026;
+    if (yearA !== yearB) return yearA - yearB;
+    return monthOrder.indexOf(a) - monthOrder.indexOf(b);
+  });
 }
 
 /**
@@ -853,10 +882,13 @@ function calculateMonthlyComparison() {
   
   // Get month keywords for filtering
   const getMonthKeywords = (month) => {
-    if (month === 'Desember') return ['dec', 'des'];
-    if (month === 'Januari') return ['jan'];
-    if (month === 'Februari') return ['feb'];
-    return [];
+    const map = {
+      'Januari': ['jan'], 'Februari': ['feb'], 'Maret': ['mar'],
+      'April': ['apr'], 'Mei': ['may', 'mei'], 'Juni': ['jun'],
+      'Juli': ['jul'], 'Agustus': ['aug'], 'September': ['sep'],
+      'Oktober': ['oct', 'okt'], 'November': ['nov'], 'Desember': ['dec', 'des']
+    };
+    return map[month] || [];
   };
   
   const month1Keywords = getMonthKeywords(state.selectedMonth1);
@@ -932,10 +964,13 @@ function getMonthlyDataForUker(uker) {
   
   // Get month keywords for filtering
   const getMonthKeywords = (month) => {
-    if (month === 'Desember') return ['dec', 'des'];
-    if (month === 'Januari') return ['jan'];
-    if (month === 'Februari') return ['feb'];
-    return [];
+    const map = {
+      'Januari': ['jan'], 'Februari': ['feb'], 'Maret': ['mar'],
+      'April': ['apr'], 'Mei': ['may', 'mei'], 'Juni': ['jun'],
+      'Juli': ['jul'], 'Agustus': ['aug'], 'September': ['sep'],
+      'Oktober': ['oct', 'okt'], 'November': ['nov'], 'Desember': ['dec', 'des']
+    };
+    return map[month] || [];
   };
   
   const month1Keywords = getMonthKeywords(state.selectedMonth1);
@@ -1039,13 +1074,9 @@ function populateMonthSelectors() {
   if (availableMonths.length >= 2) {
     state.selectedMonth1 = availableMonths[availableMonths.length - 2];
     state.selectedMonth2 = availableMonths[availableMonths.length - 1];
-    month1Select.value = state.selectedMonth1;
-    month2Select.value = state.selectedMonth2;
   } else if (availableMonths.length === 1) {
     state.selectedMonth1 = availableMonths[0];
     state.selectedMonth2 = availableMonths[0];
-    month1Select.value = state.selectedMonth1;
-    month2Select.value = state.selectedMonth2;
   }
   
   // Remove old event listeners and add new ones
@@ -1053,6 +1084,10 @@ function populateMonthSelectors() {
   const newMonth2Select = month2Select.cloneNode(true);
   month1Select.parentNode.replaceChild(newMonth1Select, month1Select);
   month2Select.parentNode.replaceChild(newMonth2Select, month2Select);
+  
+  // Set values AFTER cloning to preserve selection
+  newMonth1Select.value = state.selectedMonth1;
+  newMonth2Select.value = state.selectedMonth2;
   
   newMonth1Select.addEventListener('change', (e) => {
     state.selectedMonth1 = e.target.value;
@@ -1102,10 +1137,21 @@ function updateComparisonChart() {
   
   // Get colors based on month selection
   const getMonthColor = (month) => {
-    if (month === 'Desember') return { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' };
-    if (month === 'Januari') return { border: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' };
-    if (month === 'Februari') return { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
-    return { border: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
+    const colorMap = {
+      'Januari': { border: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' },
+      'Februari': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+      'Maret': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+      'April': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+      'Mei': { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },
+      'Juni': { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.1)' },
+      'Juli': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' },
+      'Agustus': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+      'September': { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)' },
+      'Oktober': { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.1)' },
+      'November': { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
+      'Desember': { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+    };
+    return colorMap[month] || { border: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
   };
   
   const month1Color = getMonthColor(state.selectedMonth1);
