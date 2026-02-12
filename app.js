@@ -1214,7 +1214,7 @@ function updateComparisonChart() {
       },
       title: {
         display: true,
-        text: [`Perbandingan ${uker}`, '(dalam juta)'],
+        text: [`Perbandingan ${uker}`, '(Dalam Miliar)'],
         color: getThemeColors().text,
         font: {
           size: 14,
