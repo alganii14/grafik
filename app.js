@@ -1298,7 +1298,7 @@ function updateComparisonChart() {
   
   if (state.comparisonChart) {
     state.comparisonChart.data = chartData;
-    state.comparisonChart.options.plugins.title.text = [`Perbandingan ${uker}`, '(dalam juta)'];
+    state.comparisonChart.options.plugins.title.text = [`Perbandingan ${uker}`, '(Dalam Miliar)'];
     state.comparisonChart.update('none');
   } else {
     const ctx = canvas.getContext('2d');
