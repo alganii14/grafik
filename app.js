@@ -3,6 +3,9 @@
  * Main Application JavaScript
  */
 
+// Register datalabels plugin
+Chart.register(ChartDataLabels);
+
 // =====================================
 // Configuration
 // =====================================
@@ -562,6 +565,9 @@ function updateChart() {
         plugins: {
           legend: {
             display: false, // We use custom legend
+          },
+          datalabels: {
+            display: false // Disable on main chart (too many lines)
           },
           tooltip: {
             backgroundColor: "rgba(26, 26, 37, 0.95)",
@@ -1233,6 +1239,28 @@ function updateComparisonChart() {
             return `${context.dataset.label}: ${formatNumber(context.raw)}`;
           }
         }
+      },
+      datalabels: {
+        display: true,
+        align: function(context) {
+          return context.datasetIndex === 0 ? 'top' : 'bottom';
+        },
+        anchor: function(context) {
+          return context.datasetIndex === 0 ? 'end' : 'start';
+        },
+        color: function(context) {
+          return context.dataset.borderColor;
+        },
+        font: {
+          size: 10,
+          weight: '600'
+        },
+        formatter: function(value) {
+          if (value === null || value === undefined) return '';
+          return Math.round(value).toLocaleString('id-ID');
+        },
+        padding: 4,
+        offset: 4
       }
     },
     scales: {
@@ -1456,7 +1484,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // =====================================
 
 function getThemeColors() {
-  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   return {
     text: isDark ? '#f8fafc' : '#0f172a',
     textSecondary: isDark ? '#94a3b8' : '#475569',
@@ -1488,7 +1516,7 @@ function updateChartTheme() {
 }
 
 function initTheme() {
-  const savedTheme = localStorage.getItem('theme') || 'dark';
+  const savedTheme = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
   updateThemeIcon(savedTheme);
 }
