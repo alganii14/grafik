@@ -1,4 +1,4 @@
-UKER;KC Purwakarta;KC Subang;KC Indramayu;KC Jatibarang;KC Pamanukan;KC Sumedang;KC Majalengka;KC Cirebon Gunung Jati;KC Kuningan;KC Cirebon Kartini;KC Singaparna;KC Tasikmalaya;KC Garut;KC Ciamis;KC Banjar;KC Cibadak;KC Sukabumi;KC Cimahi;KC Cianjur;KC Soreang;KC Majalaya;KC Bandung Sukarno Hatta;KC Bandung A.H. Nasution;KC Bandung Setiabudi;KC Bandung Naripan;KC Bandung Kopo;KC Bandung Martadinata
+﻿UKER;KC Purwakarta;KC Subang;KC Indramayu;KC Jatibarang;KC Pamanukan;KC Sumedang;KC Majalengka;KC Cirebon Gunung Jati;KC Kuningan;KC Cirebon Kartini;KC Singaparna;KC Tasikmalaya;KC Garut;KC Ciamis;KC Banjar;KC Cibadak;KC Sukabumi;KC Cimahi;KC Cianjur;KC Soreang;KC Majalaya;KC Bandung Sukarno Hatta;KC Bandung A.H. Nasution;KC Bandung Setiabudi;KC Bandung Naripan;KC Bandung Kopo;KC Bandung Martadinata
 01-Dec; 677 ; 703 ; 968 ; 1.161 ; 698 ; 937 ; 1.218 ; 870 ; 1.237 ; 957 ; 663 ; 953 ; 1.325 ; 913 ; 944 ; 715 ; 841 ; 1.176 ; 982 ; 745 ; 904 ; 320 ; 894 ; 543 ; 507 ; 379 ; 341 ;;
 02-Dec; 681 ; 701 ; 970 ; 1.157 ; 696 ; 938 ; 1.215 ; 869 ; 1.236 ; 959 ; 662 ; 956 ; 1.322 ; 913 ; 943 ; 716 ; 842 ; 1.176 ; 979 ; 741 ; 901 ; 320 ; 893 ; 543 ; 507 ; 378 ; 343 ;;
 03-Dec; 679 ; 701 ; 969 ; 1.159 ; 695 ; 936 ; 1.215 ; 870 ; 1.234 ; 954 ; 659 ; 957 ; 1.327 ; 912 ; 940 ; 715 ; 844 ; 1.178 ; 978 ; 743 ; 902 ; 319 ; 895 ; 544 ; 508 ; 377 ; 342 ;;
@@ -71,3 +71,7 @@ UKER;KC Purwakarta;KC Subang;KC Indramayu;KC Jatibarang;KC Pamanukan;KC Sumedang
 10-Feb; 681 ; 711 ; 962 ; 1.154 ; 652 ; 906 ; 1.213 ; 849 ; 1.241 ; 962 ; 668 ; 977 ; 1.352 ; 909 ; 960 ; 721 ; 853 ; 1.138 ; 972 ; 756 ; 902 ; 430 ; 398 ; 327 ; 340 ; 422 ; 406 
 11-Feb; 679 ; 746 ; 961 ; 1.160 ; 680 ; 961 ; 1.281 ; 845 ; 1.238 ; 958 ; 715 ; 1.012 ; 1.339 ; 905 ; 987 ; 717 ; 854 ; 1.137 ; 1.062 ; 760 ; 901 ; 429 ; 398 ; 326 ; 339 ; 422 ; 406 
 12-Feb; 680 ; 723 ; 963 ; 1.165 ; 658 ; 930 ; 1.244 ; 844 ; 1.237 ; 957 ; 691 ; 995 ; 1.338 ; 904 ; 981 ; 718 ; 854 ; 1.136 ; 1.018 ; 760 ; 899 ; 429 ; 396 ; 327 ; 338 ; 420 ; 405 
+13-Feb; 684 ; 716 ; 961 ; 1.167 ; 655 ; 914 ; 1.223 ; 844 ; 1.237 ; 969 ; 680 ; 985 ; 1.338 ; 912 ; 979 ; 715 ; 854 ; 1.140 ; 1.001 ; 758 ; 899 ; 429 ; 396 ; 326 ; 339 ; 421 ; 403 
+14-Feb; 684 ; 713 ; 957 ; 1.167 ; 652 ; 911 ; 1.217 ; 846 ; 1.238 ; 967 ; 681 ; 983 ; 1.334 ; 911 ; 979 ; 714 ; 857 ; 1.140 ; 995 ; 756 ; 897 ; 428 ; 395 ; 324 ; 337 ; 420 ; 403 
+15-Feb; 679 ; 708 ; 952 ; 1.165 ; 648 ; 906 ; 1.208 ; 842 ; 1.232 ; 960 ; 674 ; 978 ; 1.326 ; 907 ; 974 ; 710 ; 852 ; 1.132 ; 985 ; 752 ; 891 ; 427 ; 393 ; 322 ; 335 ; 417 ; 401 
+16-Feb; 676 ; 699 ; 949 ; 1.157 ; 644 ; 899 ; 1.197 ; 838 ; 1.228 ; 961 ; 668 ; 974 ; 1.310 ; 901 ; 968 ; 705 ; 846 ; 1.125 ; 972 ; 750 ; 886 ; 425 ; 391 ; 321 ; 334 ; 416 ; 398 
