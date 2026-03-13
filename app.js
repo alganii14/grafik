@@ -123,6 +123,8 @@ const state = {
   lastDataHash: null,
 };
 
+const ALL_BRANCHES_VALUE = "__all__";
+
 // =====================================
 // DOM Elements
 // =====================================
@@ -347,6 +349,23 @@ function parseCSV(csvText) {
   }
 
   return { dates, ukerNames, data };
+}
+
+function getFilteredUkersForArea(ukerNames) {
+  const cleaned = (ukerNames || []).filter((u) => u);
+  if (state.currentArea === "all" || !CONFIG.areaMapping[state.currentArea]) {
+    return cleaned;
+  }
+
+  const areaUkers = CONFIG.areaMapping[state.currentArea];
+  return cleaned.filter((uker) => {
+    return areaUkers.some(
+      (areaUker) =>
+        uker.toLowerCase().includes(
+          areaUker.toLowerCase().replace("KC ", "").replace("KCP ", ""),
+        ) || areaUker.toLowerCase().includes(uker.toLowerCase()),
+    );
+  });
 }
 
 // =====================================
@@ -875,16 +894,7 @@ function calculateMonthlyComparison() {
   const { dates, data, ukerNames } = state.chartData;
   
   // Filter by area if selected
-  let filteredUkers = ukerNames.filter(u => u);
-  if (state.currentArea !== "all" && CONFIG.areaMapping[state.currentArea]) {
-    const areaUkers = CONFIG.areaMapping[state.currentArea];
-    filteredUkers = filteredUkers.filter(uker => {
-      return areaUkers.some(areaUker => 
-        uker.toLowerCase().includes(areaUker.toLowerCase().replace('KC ', '').replace('KCP ', '')) ||
-        areaUker.toLowerCase().includes(uker.toLowerCase())
-      );
-    });
-  }
+  const filteredUkers = getFilteredUkersForArea(ukerNames);
   
   // Get month keywords for filtering
   const getMonthKeywords = (month) => {
@@ -963,10 +973,12 @@ function calculateMonthlyComparison() {
  * Get monthly data for a specific unit kerja
  */
 function getMonthlyDataForUker(uker) {
-  if (!state.chartData || !state.chartData.data[uker] || !state.selectedMonth1 || !state.selectedMonth2) return null;
+  if (!state.chartData || !state.selectedMonth1 || !state.selectedMonth2) return null;
   
   const { dates, data } = state.chartData;
-  const ukerData = data[uker];
+  const filteredUkers = getFilteredUkersForArea(state.chartData.ukerNames);
+
+  if (uker !== ALL_BRANCHES_VALUE && !data[uker]) return null;
   
   // Get month keywords for filtering
   const getMonthKeywords = (month) => {
@@ -992,10 +1004,17 @@ function getMonthlyDataForUker(uker) {
     const dayMatch = date.match(/^(\d+)/);
     const day = dayMatch ? parseInt(dayMatch[1]) : index + 1;
     
+    let value = 0;
+    if (uker === ALL_BRANCHES_VALUE) {
+      value = filteredUkers.reduce((sum, name) => sum + (data[name]?.[index] || 0), 0);
+    } else {
+      value = data[uker][index] || 0;
+    }
+
     if (month1Keywords.some(kw => dateLower.includes(kw))) {
-      month1Data.push({ day, value: ukerData[index] || 0 });
+      month1Data.push({ day, value });
     } else if (month2Keywords.some(kw => dateLower.includes(kw))) {
-      month2Data.push({ day, value: ukerData[index] || 0 });
+      month2Data.push({ day, value });
     }
   });
   
@@ -1012,16 +1031,12 @@ function populateComparisonUkerSelect() {
   select.innerHTML = '';
   
   // Filter by area if selected
-  let filteredUkers = state.chartData.ukerNames.filter(u => u);
-  if (state.currentArea !== "all" && CONFIG.areaMapping[state.currentArea]) {
-    const areaUkers = CONFIG.areaMapping[state.currentArea];
-    filteredUkers = filteredUkers.filter(uker => {
-      return areaUkers.some(areaUker => 
-        uker.toLowerCase().includes(areaUker.toLowerCase().replace('KC ', '').replace('KCP ', '')) ||
-        areaUker.toLowerCase().includes(uker.toLowerCase())
-      );
-    });
-  }
+  const filteredUkers = getFilteredUkersForArea(state.chartData.ukerNames);
+
+  const allOption = document.createElement('option');
+  allOption.value = ALL_BRANCHES_VALUE;
+  allOption.textContent = 'Semua Cabang (Gabungan)';
+  select.appendChild(allOption);
   
   filteredUkers.forEach(uker => {
     if (!uker) return;
@@ -1033,8 +1048,8 @@ function populateComparisonUkerSelect() {
   
   // Set first filtered uker as selected
   if (filteredUkers.length > 0) {
-    state.selectedComparisonUker = filteredUkers[0];
-    select.value = filteredUkers[0];
+    state.selectedComparisonUker = ALL_BRANCHES_VALUE;
+    select.value = ALL_BRANCHES_VALUE;
   } else {
     state.selectedComparisonUker = null;
   }
@@ -1195,6 +1210,10 @@ function updateComparisonChart() {
     ]
   };
   
+  const chartTitle = uker === ALL_BRANCHES_VALUE
+    ? 'Perbandingan Semua Cabang (Gabungan)'
+    : `Perbandingan ${uker}`;
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -1214,7 +1233,7 @@ function updateComparisonChart() {
       },
       title: {
         display: true,
-        text: [`Perbandingan ${uker}`, '(Dalam Miliar)'],
+        text: [chartTitle, '(Dalam Miliar)'],
         color: getThemeColors().text,
         font: {
           size: 14,
@@ -1298,7 +1317,7 @@ function updateComparisonChart() {
   
   if (state.comparisonChart) {
     state.comparisonChart.data = chartData;
-    state.comparisonChart.options.plugins.title.text = [`Perbandingan ${uker}`, '(Dalam Miliar)'];
+    state.comparisonChart.options.plugins.title.text = [chartTitle, '(Dalam Miliar)'];
     state.comparisonChart.update('none');
   } else {
     const ctx = canvas.getContext('2d');
