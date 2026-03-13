@@ -1245,7 +1245,20 @@ function updateComparisonChart() {
         }
       },
       datalabels: {
-        display: true,
+        display: function(context) {
+          if (showAllDateTicks) return true;
+          const points = context.dataset.data || [];
+          const firstValidIndex = points.findIndex((v) => v !== null && v !== undefined);
+          let lastValidIndex = -1;
+          for (let i = points.length - 1; i >= 0; i--) {
+            if (points[i] !== null && points[i] !== undefined) {
+              lastValidIndex = i;
+              break;
+            }
+          }
+          if (firstValidIndex === -1 || lastValidIndex === -1) return false;
+          return context.dataIndex === firstValidIndex || context.dataIndex === lastValidIndex;
+        },
         align: function(context) {
           return context.datasetIndex === 0 ? 'top' : 'bottom';
         },
@@ -1281,10 +1294,7 @@ function updateComparisonChart() {
           color: getThemeColors().textMuted,
           autoSkip: false,
           callback: function(value, index) {
-            if (showAllDateTicks) return labels[index];
-            const lastIndex = labels.length - 1;
-            if (index === 0 || index === lastIndex) return labels[index];
-            return '';
+            return labels[index];
           }
         }
       },
@@ -1310,6 +1320,24 @@ function updateComparisonChart() {
   if (state.comparisonChart) {
     state.comparisonChart.data = chartData;
     state.comparisonChart.options.plugins.title.text = [chartTitle, '(Dalam Miliar)'];
+    state.comparisonChart.options.plugins.datalabels.display = function(context) {
+      if (showAllDateTicks) return true;
+      const points = context.dataset.data || [];
+      const firstValidIndex = points.findIndex((v) => v !== null && v !== undefined);
+      let lastValidIndex = -1;
+      for (let i = points.length - 1; i >= 0; i--) {
+        if (points[i] !== null && points[i] !== undefined) {
+          lastValidIndex = i;
+          break;
+        }
+      }
+      if (firstValidIndex === -1 || lastValidIndex === -1) return false;
+      return context.dataIndex === firstValidIndex || context.dataIndex === lastValidIndex;
+    };
+    state.comparisonChart.options.scales.x.ticks.autoSkip = false;
+    state.comparisonChart.options.scales.x.ticks.callback = function(value, index) {
+      return labels[index];
+    };
     state.comparisonChart.update('none');
   } else {
     const ctx = canvas.getContext('2d');
@@ -1364,8 +1392,8 @@ function updateComparisonTable() {
   const firstBottom = rows[0].bottom;
 
   const formatDelta = (value) => {
-    if (value > 0) return `<span class="delta-cell positive">▲ ${formatNumber(value, 1)}</span>`;
-    if (value < 0) return `<span class="delta-cell negative">▼ ${formatNumber(Math.abs(value), 1)}</span>`;
+    if (value > 0) return `<span class="delta-cell positive">▲ ${formatNumber(value, 0)}</span>`;
+    if (value < 0) return `<span class="delta-cell negative">▼ ${formatNumber(Math.abs(value), 0)}</span>`;
     return `<span class="delta-cell neutral">-</span>`;
   };
 
@@ -1378,9 +1406,9 @@ function updateComparisonTable() {
       return `
         <tr>
           <td>${row.month}</td>
-          <td class="value">${formatNumber(row.ending, 1)}</td>
-          <td class="value">${formatNumber(row.avg, 1)}</td>
-          <td class="value">${formatNumber(avgRatio, 1)}%</td>
+          <td class="value">${formatNumber(row.ending, 0)}</td>
+          <td class="value">${formatNumber(row.avg, 0)}</td>
+          <td class="value">${formatNumber(avgRatio, 0)}%</td>
           <td>${formatDelta(i === 0 ? 0 : mtd)}</td>
           <td>${formatDelta(i === 0 ? 0 : ytd)}</td>
         </tr>
@@ -1397,9 +1425,9 @@ function updateComparisonTable() {
       return `
         <tr>
           <td>${row.month}</td>
-          <td class="value">${formatNumber(row.ending, 1)}</td>
-          <td class="value">${formatNumber(row.bottom, 1)}</td>
-          <td class="value">${formatNumber(bottomRatio, 1)}%</td>
+          <td class="value">${formatNumber(row.ending, 0)}</td>
+          <td class="value">${formatNumber(row.bottom, 0)}</td>
+          <td class="value">${formatNumber(bottomRatio, 0)}%</td>
           <td>${formatDelta(i === 0 ? 0 : mtd)}</td>
           <td>${formatDelta(i === 0 ? 0 : ytd)}</td>
         </tr>
