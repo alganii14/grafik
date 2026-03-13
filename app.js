@@ -116,8 +116,7 @@ const state = {
   chart: null,
   comparisonChart: null,
   selectedComparisonUker: null,
-  selectedMonth1: null,
-  selectedMonth2: null,
+  selectedMonths: [],
   autoRefreshEnabled: false,
   refreshIntervalId: null,
   lastDataHash: null,
@@ -366,6 +365,24 @@ function getFilteredUkersForArea(ukerNames) {
         ) || areaUker.toLowerCase().includes(uker.toLowerCase()),
     );
   });
+}
+
+function getMonthKeywords(month) {
+  const map = {
+    Januari: ["jan"],
+    Februari: ["feb"],
+    Maret: ["mar"],
+    April: ["apr"],
+    Mei: ["may", "mei"],
+    Juni: ["jun"],
+    Juli: ["jul"],
+    Agustus: ["aug"],
+    September: ["sep"],
+    Oktober: ["oct", "okt"],
+    November: ["nov"],
+    Desember: ["dec", "des"],
+  };
+  return map[month] || [];
 }
 
 // =====================================
@@ -889,26 +906,17 @@ function getAvailableMonths() {
  * Calculate monthly comparison data (filtered by area)
  */
 function calculateMonthlyComparison() {
-  if (!state.chartData || !state.selectedMonth1 || !state.selectedMonth2) return null;
+  if (!state.chartData || !state.selectedMonths || state.selectedMonths.length < 2) return null;
 
   const { dates, data, ukerNames } = state.chartData;
+  const firstMonth = state.selectedMonths[0];
+  const lastMonth = state.selectedMonths[state.selectedMonths.length - 1];
   
   // Filter by area if selected
   const filteredUkers = getFilteredUkersForArea(ukerNames);
-  
-  // Get month keywords for filtering
-  const getMonthKeywords = (month) => {
-    const map = {
-      'Januari': ['jan'], 'Februari': ['feb'], 'Maret': ['mar'],
-      'April': ['apr'], 'Mei': ['may', 'mei'], 'Juni': ['jun'],
-      'Juli': ['jul'], 'Agustus': ['aug'], 'September': ['sep'],
-      'Oktober': ['oct', 'okt'], 'November': ['nov'], 'Desember': ['dec', 'des']
-    };
-    return map[month] || [];
-  };
-  
-  const month1Keywords = getMonthKeywords(state.selectedMonth1);
-  const month2Keywords = getMonthKeywords(state.selectedMonth2);
+
+  const month1Keywords = getMonthKeywords(firstMonth);
+  const month2Keywords = getMonthKeywords(lastMonth);
   
   // Separate data by selected months
   const month1Indices = [];
@@ -973,30 +981,17 @@ function calculateMonthlyComparison() {
  * Get monthly data for a specific unit kerja
  */
 function getMonthlyDataForUker(uker) {
-  if (!state.chartData || !state.selectedMonth1 || !state.selectedMonth2) return null;
+  if (!state.chartData || !state.selectedMonths || state.selectedMonths.length === 0) return null;
   
   const { dates, data } = state.chartData;
   const filteredUkers = getFilteredUkersForArea(state.chartData.ukerNames);
 
   if (uker !== ALL_BRANCHES_VALUE && !data[uker]) return null;
-  
-  // Get month keywords for filtering
-  const getMonthKeywords = (month) => {
-    const map = {
-      'Januari': ['jan'], 'Februari': ['feb'], 'Maret': ['mar'],
-      'April': ['apr'], 'Mei': ['may', 'mei'], 'Juni': ['jun'],
-      'Juli': ['jul'], 'Agustus': ['aug'], 'September': ['sep'],
-      'Oktober': ['oct', 'okt'], 'November': ['nov'], 'Desember': ['dec', 'des']
-    };
-    return map[month] || [];
-  };
-  
-  const month1Keywords = getMonthKeywords(state.selectedMonth1);
-  const month2Keywords = getMonthKeywords(state.selectedMonth2);
-  
-  // Separate data by selected months with day numbers
-  const month1Data = [];
-  const month2Data = [];
+
+  const monthDataMap = {};
+  state.selectedMonths.forEach((month) => {
+    monthDataMap[month] = [];
+  });
   
   dates.forEach((date, index) => {
     const dateLower = date.toLowerCase();
@@ -1011,14 +1006,16 @@ function getMonthlyDataForUker(uker) {
       value = data[uker][index] || 0;
     }
 
-    if (month1Keywords.some(kw => dateLower.includes(kw))) {
-      month1Data.push({ day, value });
-    } else if (month2Keywords.some(kw => dateLower.includes(kw))) {
-      month2Data.push({ day, value });
+    for (const month of state.selectedMonths) {
+      const keywords = getMonthKeywords(month);
+      if (keywords.some((kw) => dateLower.includes(kw))) {
+        monthDataMap[month].push({ day, value });
+        break;
+      }
     }
   });
   
-  return { month1Data, month2Data };
+  return monthDataMap;
 }
 
 /**
@@ -1067,57 +1064,39 @@ function populateComparisonUkerSelect() {
  * Populate month selectors
  */
 function populateMonthSelectors() {
-  const month1Select = document.getElementById('month1Select');
-  const month2Select = document.getElementById('month2Select');
+  const monthMultiSelect = document.getElementById('monthMultiSelect');
   
-  if (!month1Select || !month2Select) return;
+  if (!monthMultiSelect) return;
   
   const availableMonths = getAvailableMonths();
   
-  // Clear existing options
-  month1Select.innerHTML = '';
-  month2Select.innerHTML = '';
+  monthMultiSelect.innerHTML = '';
   
-  // Populate month selectors
+  // Populate month selector
   availableMonths.forEach(month => {
-    const option1 = document.createElement('option');
-    option1.value = month;
-    option1.textContent = month;
-    month1Select.appendChild(option1);
-    
-    const option2 = document.createElement('option');
-    option2.value = month;
-    option2.textContent = month;
-    month2Select.appendChild(option2);
+    const option = document.createElement('option');
+    option.value = month;
+    option.textContent = month;
+    monthMultiSelect.appendChild(option);
   });
   
-  // Set default selections
-  if (availableMonths.length >= 2) {
-    state.selectedMonth1 = availableMonths[availableMonths.length - 2];
-    state.selectedMonth2 = availableMonths[availableMonths.length - 1];
-  } else if (availableMonths.length === 1) {
-    state.selectedMonth1 = availableMonths[0];
-    state.selectedMonth2 = availableMonths[0];
-  }
+  // Default: select up to 4 latest months
+  state.selectedMonths = availableMonths.slice(Math.max(availableMonths.length - 4, 0));
   
-  // Remove old event listeners and add new ones
-  const newMonth1Select = month1Select.cloneNode(true);
-  const newMonth2Select = month2Select.cloneNode(true);
-  month1Select.parentNode.replaceChild(newMonth1Select, month1Select);
-  month2Select.parentNode.replaceChild(newMonth2Select, month2Select);
+  Array.from(monthMultiSelect.options).forEach((opt) => {
+    opt.selected = state.selectedMonths.includes(opt.value);
+  });
+
+  const newMonthMultiSelect = monthMultiSelect.cloneNode(true);
+  monthMultiSelect.parentNode.replaceChild(newMonthMultiSelect, monthMultiSelect);
   
-  // Set values AFTER cloning to preserve selection
-  newMonth1Select.value = state.selectedMonth1;
-  newMonth2Select.value = state.selectedMonth2;
-  
-  newMonth1Select.addEventListener('change', (e) => {
-    state.selectedMonth1 = e.target.value;
-    updateComparisonChart();
-    updateComparisonTable();
+  Array.from(newMonthMultiSelect.options).forEach((opt) => {
+    opt.selected = state.selectedMonths.includes(opt.value);
   });
   
-  newMonth2Select.addEventListener('change', (e) => {
-    state.selectedMonth2 = e.target.value;
+  newMonthMultiSelect.addEventListener('change', (e) => {
+    const selected = Array.from(e.target.selectedOptions).map((opt) => opt.value);
+    state.selectedMonths = availableMonths.filter((month) => selected.includes(month));
     updateComparisonChart();
     updateComparisonTable();
   });
@@ -1131,30 +1110,20 @@ function updateComparisonChart() {
   if (!canvas) return;
   
   const uker = state.selectedComparisonUker;
-  if (!uker || !state.selectedMonth1 || !state.selectedMonth2) return;
+  if (!uker || !state.selectedMonths || state.selectedMonths.length === 0) return;
   
   const monthlyData = getMonthlyDataForUker(uker);
   if (!monthlyData) return;
-  
-  const { month1Data, month2Data } = monthlyData;
-  
+
+  const selectedMonths = state.selectedMonths.filter((m) => monthlyData[m]);
+  if (selectedMonths.length === 0) return;
+
   // Create labels (days 1-31)
   const maxDay = Math.max(
-    ...month1Data.map(d => d.day),
-    ...month2Data.map(d => d.day)
+    1,
+    ...selectedMonths.flatMap((m) => monthlyData[m].map((d) => d.day)),
   );
   const labels = Array.from({ length: maxDay }, (_, i) => i + 1);
-  
-  // Map data to days
-  const month1Values = labels.map(day => {
-    const found = month1Data.find(d => d.day === day);
-    return found ? found.value : null;
-  });
-  
-  const month2Values = labels.map(day => {
-    const found = month2Data.find(d => d.day === day);
-    return found ? found.value : null;
-  });
   
   // Get colors based on month selection
   const getMonthColor = (month) => {
@@ -1175,39 +1144,28 @@ function updateComparisonChart() {
     return colorMap[month] || { border: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
   };
   
-  const month1Color = getMonthColor(state.selectedMonth1);
-  const month2Color = getMonthColor(state.selectedMonth2);
-  
   const chartData = {
     labels: labels,
-    datasets: [
-      {
-        label: state.selectedMonth1,
-        data: month1Values,
-        borderColor: month1Color.border,
-        backgroundColor: month1Color.bg,
+    datasets: selectedMonths.map((month) => {
+      const monthColor = getMonthColor(month);
+      const values = labels.map((day) => {
+        const found = monthlyData[month].find((d) => d.day === day);
+        return found ? found.value : null;
+      });
+      return {
+        label: month,
+        data: values,
+        borderColor: monthColor.border,
+        backgroundColor: monthColor.bg,
         borderWidth: 2,
         tension: 0.3,
         pointRadius: 4,
         pointHoverRadius: 6,
-        pointBackgroundColor: month1Color.border,
+        pointBackgroundColor: monthColor.border,
         fill: false,
-        spanGaps: true
-      },
-      {
-        label: state.selectedMonth2,
-        data: month2Values,
-        borderColor: month2Color.border,
-        backgroundColor: month2Color.bg,
-        borderWidth: 2,
-        tension: 0.3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        pointBackgroundColor: month2Color.border,
-        fill: false,
-        spanGaps: true
-      }
-    ]
+        spanGaps: true,
+      };
+    }),
   };
   
   const chartTitle = uker === ALL_BRANCHES_VALUE
@@ -1379,11 +1337,11 @@ function updateComparisonTable() {
   
   // Update table headers
   const table = document.getElementById('comparisonTable');
-  if (table && state.selectedMonth1 && state.selectedMonth2) {
+  if (table && state.selectedMonths && state.selectedMonths.length >= 2) {
     const headers = table.querySelectorAll('th');
     if (headers.length >= 5) {
-      headers[1].textContent = state.selectedMonth1;
-      headers[2].textContent = state.selectedMonth2;
+      headers[1].textContent = state.selectedMonths[0];
+      headers[2].textContent = state.selectedMonths[state.selectedMonths.length - 1];
     }
   }
   
