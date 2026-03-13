@@ -1183,7 +1183,7 @@ body::before {
 .comparison-chart-wrapper {
   margin-top: var(--spacing-xl);
   padding: var(--spacing-lg);
-  background: var(--bg-tertiary);
+  background: #ffffff;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
 }
@@ -1604,7 +1604,7 @@ body::before {
 
 
   .comparison-chart-container {
-    height: 300px;
+    height: 350px;
     width: 100%;
     position: relative;
   }
@@ -1656,6 +1656,32 @@ body::before {
   }
 }
 
+/* Tablet landscape / small desktop */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .comparison-chart-container {
+    height: 400px;
+  }
+
+  .main-content {
+    padding: var(--spacing-lg);
+  }
+
+  .comparison-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Large desktop */
+@media (min-width: 1600px) {
+  .comparison-chart-container {
+    height: 600px;
+  }
+
+  .main-content {
+    max-width: 1800px;
+  }
+}
+
 /* Extra small devices (Samsung Galaxy S20, iPhone SE, etc.) */
 @media (max-width: 480px) {
   .logo-text h1 {
@@ -1663,10 +1689,19 @@ body::before {
   }
   
   .comparison-chart-container {
-    height: 250px;
+    height: 280px;
   }
   
   .glass-card {
     padding: var(--spacing-sm);
+  }
+
+  .comparison-chart-header {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .comparison-chart-header h3 {
+    font-size: 0.875rem;
   }
 }

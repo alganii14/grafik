@@ -1209,6 +1209,14 @@ function updateComparisonChart() {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: {
+        left: 30,
+        right: 30,
+        top: 20,
+        bottom: 0
+      }
+    },
     interaction: {
       mode: 'index',
       intersect: false
@@ -1348,10 +1356,21 @@ function updateComparisonChart() {
     state.comparisonChart.update('none');
   } else {
     const ctx = canvas.getContext('2d');
+    const bgPlugin = {
+      id: 'whiteBg',
+      beforeDraw: (chart) => {
+        const { ctx: c, width, height } = chart;
+        c.save();
+        c.fillStyle = '#ffffff';
+        c.fillRect(0, 0, width, height);
+        c.restore();
+      }
+    };
     state.comparisonChart = new Chart(ctx, {
       type: 'line',
       data: chartData,
-      options: options
+      options: options,
+      plugins: [bgPlugin]
     });
   }
 }
