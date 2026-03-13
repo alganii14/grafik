@@ -125,6 +125,7 @@ const state = {
   selectedComparisonUker: null,
   selectedMonths: [],
   dateLabelMode: "range",
+  chartTitleVisibility: "hide",
   autoRefreshEnabled: false,
   refreshIntervalId: null,
   lastDataHash: null,
@@ -158,6 +159,7 @@ const elements = {
   statusText: document.querySelector(".status-text"),
   lastUpdateTime: document.getElementById("lastUpdateTime"),
   dateLabelModeSelect: document.getElementById("dateLabelModeSelect"),
+  chartTitleVisibilitySelect: document.getElementById("chartTitleVisibilitySelect"),
   loadingOverlay: document.getElementById("loadingOverlay"),
   toastContainer: document.getElementById("toastContainer"),
 };
@@ -854,6 +856,14 @@ function initEventListeners() {
     });
   }
 
+  // Chart title visibility on comparison chart
+  if (elements.chartTitleVisibilitySelect) {
+    elements.chartTitleVisibilitySelect.addEventListener("change", (e) => {
+      state.chartTitleVisibility = e.target.value;
+      updateComparisonChart();
+    });
+  }
+
   // Select all
   if (elements.selectAllBtn) {
     elements.selectAllBtn.addEventListener("click", selectAllUkers);
@@ -1201,6 +1211,7 @@ function updateComparisonChart() {
   };
 
   const showAllDateTicks = state.dateLabelMode === "all";
+  const showChartTitle = state.chartTitleVisibility === "show";
   
   const chartTitle = uker === ALL_BRANCHES_VALUE
     ? 'Perbandingan Semua Cabang (Gabungan)'
@@ -1232,7 +1243,7 @@ function updateComparisonChart() {
         }
       },
       title: {
-        display: false,
+        display: showChartTitle,
         text: [chartTitle, '(Dalam Miliar)'],
         color: getThemeColors().text,
         font: {
@@ -1334,8 +1345,8 @@ function updateComparisonChart() {
   
   if (state.comparisonChart) {
     state.comparisonChart.data = chartData;
-    state.comparisonChart.options.plugins.title.display = false;
-    state.comparisonChart.options.plugins.title.text = [];
+    state.comparisonChart.options.plugins.title.display = showChartTitle;
+    state.comparisonChart.options.plugins.title.text = showChartTitle ? [chartTitle, '(Dalam Miliar)'] : [];
     state.comparisonChart.options.plugins.datalabels.display = function(context) {
       if (showAllDateTicks) return true;
       const points = context.dataset.data || [];
