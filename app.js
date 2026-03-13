@@ -1232,7 +1232,7 @@ function updateComparisonChart() {
         }
       },
       title: {
-        display: true,
+        display: false,
         text: [chartTitle, '(Dalam Miliar)'],
         color: getThemeColors().text,
         font: {
@@ -1334,7 +1334,8 @@ function updateComparisonChart() {
   
   if (state.comparisonChart) {
     state.comparisonChart.data = chartData;
-    state.comparisonChart.options.plugins.title.text = [chartTitle, '(Dalam Miliar)'];
+    state.comparisonChart.options.plugins.title.display = false;
+    state.comparisonChart.options.plugins.title.text = [];
     state.comparisonChart.options.plugins.datalabels.display = function(context) {
       if (showAllDateTicks) return true;
       const points = context.dataset.data || [];
