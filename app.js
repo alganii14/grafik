@@ -39,6 +39,13 @@ const CONFIG = {
       giro: "csv ritel/giro.csv",
       tabungan: "csv ritel/tabungan.csv",
     },
+    "kanca only": {
+      dpk: "csv kanca only/dpk.csv",
+      casa: "csv kanca only/casa.csv",
+      depo: "csv kanca only/depo.csv",
+      giro: "csv kanca only/giro.csv",
+      tabungan: "csv kanca only/tabungan.csv",
+    },
   },
   chartColors: [
     "#3b82f6",
