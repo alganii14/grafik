@@ -12,6 +12,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -181,7 +182,7 @@
                   <thead>
                     <tr>
                       <th>Bulan</th>
-                      <th>Ending</th>
+                      <th>Ending Balance</th>
                       <th>Avg Bln</th>
                       <th>Avg/Ending</th>
                       <th>MTD</th>
@@ -204,7 +205,7 @@
                   <thead>
                     <tr>
                       <th>Bulan</th>
-                      <th>Ending</th>
+                      <th>Ending Balance</th>
                       <th>Bottom</th>
                       <th>Bottom/Ending</th>
                       <th>MTD</th>
@@ -219,6 +220,13 @@
                 </table>
               </div>
             </div>
+          </div>
+
+          <div class="comparison-metrics-actions">
+            <button id="generateTablePhotoBtn" class="btn btn-primary" type="button">
+              <span class="btn-icon">🖼️</span>
+              Generate Foto Tabel
+            </button>
           </div>
 
 

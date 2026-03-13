@@ -1133,7 +1133,7 @@ body::before {
 }
 
 .comparison-table .value {
-  text-align: right;
+  text-align: center;
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -1276,8 +1276,18 @@ body::before {
 }
 
 .delta-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   font-weight: 600;
-  text-align: right;
+  text-align: center;
+}
+
+.comparison-metrics-actions {
+  margin-top: var(--spacing-md);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .delta-cell.positive {

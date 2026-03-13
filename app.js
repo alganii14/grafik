@@ -160,6 +160,7 @@ const elements = {
   lastUpdateTime: document.getElementById("lastUpdateTime"),
   dateLabelModeSelect: document.getElementById("dateLabelModeSelect"),
   chartTitleVisibilitySelect: document.getElementById("chartTitleVisibilitySelect"),
+  generateTablePhotoBtn: document.getElementById("generateTablePhotoBtn"),
   loadingOverlay: document.getElementById("loadingOverlay"),
   toastContainer: document.getElementById("toastContainer"),
 };
@@ -273,6 +274,45 @@ function setError(message) {
 function updateLastUpdateTime() {
   const now = new Date();
   elements.lastUpdateTime.textContent = now.toLocaleTimeString("id-ID");
+}
+
+function generateComparisonTablePhoto() {
+  const metricsGrid = document.querySelector('.comparison-metrics-grid');
+  if (!metricsGrid) {
+    showToast('Tabel tidak ditemukan.', 'error');
+    return;
+  }
+
+  if (typeof html2canvas !== 'function') {
+    showToast('Library generate foto belum siap.', 'error');
+    return;
+  }
+
+  showToast('Sedang generate foto tabel...', 'info');
+
+  html2canvas(metricsGrid, {
+    backgroundColor: '#ffffff',
+    scale: 2,
+    useCORS: true,
+  })
+    .then((canvas) => {
+      const link = document.createElement('a');
+      const ukerName = state.selectedComparisonUker === ALL_BRANCHES_VALUE
+        ? 'semua-cabang'
+        : (state.selectedComparisonUker || 'uker')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+      const monthTag = (state.selectedMonths || []).join('-').toLowerCase() || 'bulan';
+      link.download = `tabel-${state.currentCategory}-${state.currentMetric}-${ukerName}-${monthTag}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Foto tabel berhasil digenerate.', 'success');
+    })
+    .catch((error) => {
+      console.error('Generate table photo error:', error);
+      showToast('Gagal generate foto tabel.', 'error');
+    });
 }
 
 // =====================================
@@ -864,6 +904,10 @@ function initEventListeners() {
     });
   }
 
+  if (elements.generateTablePhotoBtn) {
+    elements.generateTablePhotoBtn.addEventListener('click', generateComparisonTablePhoto);
+  }
+
   // Select all
   if (elements.selectAllBtn) {
     elements.selectAllBtn.addEventListener("click", selectAllUkers);
@@ -1447,8 +1491,8 @@ function updateComparisonTable() {
           <td class="value">${formatNumber(row.ending, 0)}</td>
           <td class="value">${formatNumber(row.avg, 0)}</td>
           <td class="value">${formatNumber(avgRatio, 0)}%</td>
-          <td>${formatDelta(i === 0 ? 0 : mtd)}</td>
-          <td>${formatDelta(i === 0 ? 0 : ytd)}</td>
+          <td class="value">${formatDelta(i === 0 ? 0 : mtd)}</td>
+          <td class="value">${formatDelta(i === 0 ? 0 : ytd)}</td>
         </tr>
       `;
     })
@@ -1466,8 +1510,8 @@ function updateComparisonTable() {
           <td class="value">${formatNumber(row.ending, 0)}</td>
           <td class="value">${formatNumber(row.bottom, 0)}</td>
           <td class="value">${formatNumber(bottomRatio, 0)}%</td>
-          <td>${formatDelta(i === 0 ? 0 : mtd)}</td>
-          <td>${formatDelta(i === 0 ? 0 : ytd)}</td>
+          <td class="value">${formatDelta(i === 0 ? 0 : mtd)}</td>
+          <td class="value">${formatDelta(i === 0 ? 0 : ytd)}</td>
         </tr>
       `;
     })
