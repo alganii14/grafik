@@ -1214,9 +1214,9 @@ function updateComparisonChart() {
   // Get colors based on month selection
   const getMonthColor = (month) => {
     const colorMap = {
-      'Januari': { border: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' },
+      'Januari': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
       'Februari': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
-      'Maret': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+      'Maret': { border: '#111827', bg: 'rgba(17, 24, 39, 0.1)' },
       'April': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
       'Mei': { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },
       'Juni': { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.1)' },
