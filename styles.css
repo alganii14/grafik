@@ -1013,14 +1013,50 @@ body::before {
   gap: var(--spacing-xs);
 }
 
+.month-chip-group {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
 .month-select-group label {
   font-size: 0.875rem;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.month-select-group select {
-  min-width: 120px;
+.month-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  max-width: 560px;
+}
+
+.month-chip {
+  border: 1px solid var(--border-color);
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.month-chip:hover {
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+}
+
+.month-chip.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.55);
+  color: var(--primary-color);
+}
+
+.month-selection-hint {
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }
 
 .comparison-info {
@@ -1449,9 +1485,10 @@ body::before {
     flex-direction: column;
     align-items: flex-start;
   }
-  
-  .month-select-group select {
+
+  .month-chips {
     width: 100%;
+    max-width: 100%;
   }
 
   .comparison-header h2 {

@@ -1064,42 +1064,57 @@ function populateComparisonUkerSelect() {
  * Populate month selectors
  */
 function populateMonthSelectors() {
-  const monthMultiSelect = document.getElementById('monthMultiSelect');
+  const monthChips = document.getElementById('monthChips');
+  const monthSelectionHint = document.getElementById('monthSelectionHint');
   
-  if (!monthMultiSelect) return;
+  if (!monthChips) return;
   
   const availableMonths = getAvailableMonths();
   
-  monthMultiSelect.innerHTML = '';
-  
-  // Populate month selector
-  availableMonths.forEach(month => {
-    const option = document.createElement('option');
-    option.value = month;
-    option.textContent = month;
-    monthMultiSelect.appendChild(option);
-  });
+  monthChips.innerHTML = '';
   
   // Default: select up to 4 latest months
   state.selectedMonths = availableMonths.slice(Math.max(availableMonths.length - 4, 0));
-  
-  Array.from(monthMultiSelect.options).forEach((opt) => {
-    opt.selected = state.selectedMonths.includes(opt.value);
-  });
 
-  const newMonthMultiSelect = monthMultiSelect.cloneNode(true);
-  monthMultiSelect.parentNode.replaceChild(newMonthMultiSelect, monthMultiSelect);
-  
-  Array.from(newMonthMultiSelect.options).forEach((opt) => {
-    opt.selected = state.selectedMonths.includes(opt.value);
-  });
-  
-  newMonthMultiSelect.addEventListener('change', (e) => {
-    const selected = Array.from(e.target.selectedOptions).map((opt) => opt.value);
-    state.selectedMonths = availableMonths.filter((month) => selected.includes(month));
-    updateComparisonChart();
-    updateComparisonTable();
-  });
+  const updateHint = () => {
+    if (!monthSelectionHint) return;
+    monthSelectionHint.textContent = `${state.selectedMonths.length} bulan dipilih`;
+  };
+
+  const renderChips = () => {
+    monthChips.innerHTML = '';
+    availableMonths.forEach((month) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = `month-chip ${state.selectedMonths.includes(month) ? 'active' : ''}`;
+      chip.textContent = month;
+      chip.setAttribute('aria-pressed', state.selectedMonths.includes(month) ? 'true' : 'false');
+
+      chip.addEventListener('click', () => {
+        if (state.selectedMonths.includes(month)) {
+          // Keep at least one month selected
+          if (state.selectedMonths.length === 1) return;
+          state.selectedMonths = state.selectedMonths.filter((m) => m !== month);
+        } else {
+          state.selectedMonths = availableMonths.filter((m) => state.selectedMonths.includes(m) || m === month);
+        }
+
+        renderChips();
+        updateComparisonChart();
+        updateComparisonTable();
+      });
+
+      monthChips.appendChild(chip);
+    });
+
+    updateHint();
+  };
+
+  if (state.selectedMonths.length === 0 && availableMonths.length > 0) {
+    state.selectedMonths = [availableMonths[availableMonths.length - 1]];
+  }
+
+  renderChips();
 }
 
 /**

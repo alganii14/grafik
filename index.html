@@ -128,11 +128,12 @@
           <div class="comparison-header">
             <h2>📊 Perbandingan Bulanan</h2>
             <div class="comparison-month-selector">
-              <div class="month-select-group" style="min-width: 280px;">
-                <label for="monthMultiSelect">Pilih Bulan (bisa lebih dari 2):</label>
-                <select id="monthMultiSelect" class="select-input" multiple size="4">
+              <div class="month-select-group month-chip-group">
+                <label>Pilih Bulan (bisa lebih dari 2):</label>
+                <div id="monthChips" class="month-chips" role="group" aria-label="Pilih bulan perbandingan">
                   <!-- Will be populated dynamically -->
-                </select>
+                </div>
+                <small id="monthSelectionHint" class="month-selection-hint">Minimal pilih 1 bulan.</small>
               </div>
             </div>
           </div>
