@@ -144,15 +144,72 @@
           <div class="comparison-chart-wrapper">
             <div class="comparison-chart-header">
               <h3>📈 Grafik Perbandingan</h3>
-              <div class="comparison-uker-select">
-                <label for="comparisonUkerSelect">Unit Kerja:</label>
-                <select id="comparisonUkerSelect" class="select-input">
-                  <!-- Will be populated dynamically -->
-                </select>
+              <div class="comparison-chart-controls">
+                <div class="comparison-uker-select">
+                  <label for="comparisonUkerSelect">Unit Kerja:</label>
+                  <select id="comparisonUkerSelect" class="select-input">
+                    <!-- Will be populated dynamically -->
+                  </select>
+                </div>
+                <div class="comparison-date-label-select">
+                  <label for="dateLabelModeSelect">Label Tanggal:</label>
+                  <select id="dateLabelModeSelect" class="select-input">
+                    <option value="range" selected>Awal & Akhir saja</option>
+                    <option value="all">Semua tanggal</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div class="comparison-chart-container">
               <canvas id="comparisonChart"></canvas>
+            </div>
+          </div>
+
+          <div class="comparison-metrics-grid">
+            <div class="comparison-metrics-card">
+              <h4>Average Balance vs Ending Balance</h4>
+              <div class="comparison-table-container">
+                <table class="comparison-table compact-table" id="avgEndingTable">
+                  <thead>
+                    <tr>
+                      <th>Bulan</th>
+                      <th>Ending</th>
+                      <th>Avg Bln</th>
+                      <th>Avg/Ending</th>
+                      <th>MTD</th>
+                      <th>YTD</th>
+                    </tr>
+                  </thead>
+                  <tbody id="avgEndingTableBody">
+                    <tr>
+                      <td colspan="6" class="table-placeholder">Pilih bulan untuk menampilkan tabel.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="comparison-metrics-card">
+              <h4>Bottom vs Ending Balance</h4>
+              <div class="comparison-table-container">
+                <table class="comparison-table compact-table" id="bottomEndingTable">
+                  <thead>
+                    <tr>
+                      <th>Bulan</th>
+                      <th>Ending</th>
+                      <th>Bottom</th>
+                      <th>Bottom/Ending</th>
+                      <th>MTD</th>
+                      <th>YTD</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bottomEndingTableBody">
+                    <tr>
+                      <td colspan="6" class="table-placeholder">Pilih bulan untuk menampilkan tabel.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

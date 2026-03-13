@@ -117,6 +117,7 @@ const state = {
   comparisonChart: null,
   selectedComparisonUker: null,
   selectedMonths: [],
+  dateLabelMode: "range",
   autoRefreshEnabled: false,
   refreshIntervalId: null,
   lastDataHash: null,
@@ -149,6 +150,7 @@ const elements = {
   statusIndicator: document.getElementById("statusIndicator"),
   statusText: document.querySelector(".status-text"),
   lastUpdateTime: document.getElementById("lastUpdateTime"),
+  dateLabelModeSelect: document.getElementById("dateLabelModeSelect"),
   loadingOverlay: document.getElementById("loadingOverlay"),
   toastContainer: document.getElementById("toastContainer"),
 };
@@ -837,6 +839,14 @@ function initEventListeners() {
     loadData();
   });
 
+  // Date label mode on comparison chart
+  if (elements.dateLabelModeSelect) {
+    elements.dateLabelModeSelect.addEventListener("change", (e) => {
+      state.dateLabelMode = e.target.value;
+      updateComparisonChart();
+    });
+  }
+
   // Select all
   if (elements.selectAllBtn) {
     elements.selectAllBtn.addEventListener("click", selectAllUkers);
@@ -1182,6 +1192,8 @@ function updateComparisonChart() {
       };
     }),
   };
+
+  const showAllDateTicks = state.dateLabelMode === "all";
   
   const chartTitle = uker === ALL_BRANCHES_VALUE
     ? 'Perbandingan Semua Cabang (Gabungan)'
@@ -1266,7 +1278,14 @@ function updateComparisonChart() {
           color: getThemeColors().gridColor
         },
         ticks: {
-          color: getThemeColors().textMuted
+          color: getThemeColors().textMuted,
+          autoSkip: false,
+          callback: function(value, index) {
+            if (showAllDateTicks) return labels[index];
+            const lastIndex = labels.length - 1;
+            if (index === 0 || index === lastIndex) return labels[index];
+            return '';
+          }
         }
       },
       y: {
@@ -1306,89 +1325,87 @@ function updateComparisonChart() {
  * Update comparison table
  */
 function updateComparisonTable() {
-  const comparisonTableBody = document.getElementById('comparisonTableBody');
-  const comparisonSummary = document.getElementById('comparisonSummary');
-  
-  if (!comparisonTableBody || !comparisonSummary) return;
-  
-  const comparisonData = calculateMonthlyComparison();
-  
-  if (!comparisonData || comparisonData.length === 0) {
-    comparisonTableBody.innerHTML = `
-      <tr>
-        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-          Pilih bulan untuk melihat perbandingan
-        </td>
-      </tr>
-    `;
-    comparisonSummary.innerHTML = '';
+  const avgBody = document.getElementById('avgEndingTableBody');
+  const bottomBody = document.getElementById('bottomEndingTableBody');
+  if (!avgBody || !bottomBody) return;
+
+  if (!state.selectedComparisonUker || !state.selectedMonths || state.selectedMonths.length === 0) {
+    const placeholder = '<tr><td colspan="6" class="table-placeholder">Pilih bulan untuk menampilkan tabel.</td></tr>';
+    avgBody.innerHTML = placeholder;
+    bottomBody.innerHTML = placeholder;
     return;
   }
-  
-  // Build table rows
-  let tableHTML = '';
-  comparisonData.forEach(item => {
-    const changeClass = item.percentChange > 0 ? 'positive' : 
-                       item.percentChange < 0 ? 'negative' : 'neutral';
-    const changeIcon = item.percentChange > 0 ? '↑' : 
-                      item.percentChange < 0 ? '↓' : '→';
-    
-    tableHTML += `
-      <tr>
-        <td class="uker-name" title="${item.uker}">${item.uker}</td>
-        <td class="value">${formatNumber(item.month1Avg)}</td>
-        <td class="value">${formatNumber(item.month2Avg)}</td>
-        <td class="value change ${changeClass}">${item.difference >= 0 ? '+' : ''}${formatNumber(item.difference)}</td>
-        <td>
-          <span class="change-badge ${changeClass}">
-            ${changeIcon} ${Math.abs(item.percentChange).toFixed(2)}%
-          </span>
-        </td>
-      </tr>
-    `;
-  });
-  
-  comparisonTableBody.innerHTML = tableHTML;
-  
-  // Update table headers
-  const table = document.getElementById('comparisonTable');
-  if (table && state.selectedMonths && state.selectedMonths.length >= 2) {
-    const headers = table.querySelectorAll('th');
-    if (headers.length >= 5) {
-      headers[1].textContent = state.selectedMonths[0];
-      headers[2].textContent = state.selectedMonths[state.selectedMonths.length - 1];
-    }
+
+  const monthlyData = getMonthlyDataForUker(state.selectedComparisonUker);
+  if (!monthlyData) {
+    const placeholder = '<tr><td colspan="6" class="table-placeholder">Data belum tersedia.</td></tr>';
+    avgBody.innerHTML = placeholder;
+    bottomBody.innerHTML = placeholder;
+    return;
   }
-  
-  // Calculate summary statistics
-  const positiveCount = comparisonData.filter(d => d.percentChange > 0).length;
-  const negativeCount = comparisonData.filter(d => d.percentChange < 0).length;
-  const avgChange = comparisonData.reduce((sum, d) => sum + d.percentChange, 0) / comparisonData.length;
-  const maxGrowth = Math.max(...comparisonData.map(d => d.percentChange));
-  const maxDrop = Math.min(...comparisonData.map(d => d.percentChange));
-  
-  comparisonSummary.innerHTML = `
-    <div class="comparison-stat">
-      <span class="stat-value positive">${positiveCount}</span>
-      <span class="stat-label">Naik</span>
-    </div>
-    <div class="comparison-stat">
-      <span class="stat-value negative">${negativeCount}</span>
-      <span class="stat-label">Turun</span>
-    </div>
-    <div class="comparison-stat">
-      <span class="stat-value ${avgChange >= 0 ? 'positive' : 'negative'}">${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%</span>
-      <span class="stat-label">Rata-rata Perubahan</span>
-    </div>
-    <div class="comparison-stat">
-      <span class="stat-value positive">+${maxGrowth.toFixed(2)}%</span>
-      <span class="stat-label">Kenaikan Tertinggi</span>
-    </div>
-    <div class="comparison-stat">
-      <span class="stat-value negative">${maxDrop.toFixed(2)}%</span>
-      <span class="stat-label">Penurunan Terbesar</span>
-    </div>
-  `;
+
+  const selectedMonths = state.selectedMonths.filter((m) => monthlyData[m] && monthlyData[m].length > 0);
+  if (selectedMonths.length === 0) {
+    const placeholder = '<tr><td colspan="6" class="table-placeholder">Data bulan terpilih tidak ditemukan.</td></tr>';
+    avgBody.innerHTML = placeholder;
+    bottomBody.innerHTML = placeholder;
+    return;
+  }
+
+  const rows = selectedMonths.map((month) => {
+    const values = monthlyData[month].map((d) => d.value).filter((v) => typeof v === 'number' && !Number.isNaN(v));
+    const ending = values.length ? values[values.length - 1] : 0;
+    const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    const bottom = values.length ? Math.min(...values) : 0;
+    return { month, ending, avg, bottom };
+  });
+
+  const firstEnding = rows[0].ending;
+  const firstBottom = rows[0].bottom;
+
+  const formatDelta = (value) => {
+    if (value > 0) return `<span class="delta-cell positive">▲ ${formatNumber(value, 1)}</span>`;
+    if (value < 0) return `<span class="delta-cell negative">▼ ${formatNumber(Math.abs(value), 1)}</span>`;
+    return `<span class="delta-cell neutral">-</span>`;
+  };
+
+  avgBody.innerHTML = rows
+    .map((row, i) => {
+      const prevEnding = i > 0 ? rows[i - 1].ending : row.ending;
+      const mtd = row.ending - prevEnding;
+      const ytd = row.ending - firstEnding;
+      const avgRatio = row.ending > 0 ? (row.avg / row.ending) * 100 : 0;
+      return `
+        <tr>
+          <td>${row.month}</td>
+          <td class="value">${formatNumber(row.ending, 1)}</td>
+          <td class="value">${formatNumber(row.avg, 1)}</td>
+          <td class="value">${formatNumber(avgRatio, 1)}%</td>
+          <td>${formatDelta(i === 0 ? 0 : mtd)}</td>
+          <td>${formatDelta(i === 0 ? 0 : ytd)}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  bottomBody.innerHTML = rows
+    .map((row, i) => {
+      const prevBottom = i > 0 ? rows[i - 1].bottom : row.bottom;
+      const mtd = row.bottom - prevBottom;
+      const ytd = row.bottom - firstBottom;
+      const bottomRatio = row.ending > 0 ? (row.bottom / row.ending) * 100 : 0;
+      return `
+        <tr>
+          <td>${row.month}</td>
+          <td class="value">${formatNumber(row.ending, 1)}</td>
+          <td class="value">${formatNumber(row.bottom, 1)}</td>
+          <td class="value">${formatNumber(bottomRatio, 1)}%</td>
+          <td>${formatDelta(i === 0 ? 0 : mtd)}</td>
+          <td>${formatDelta(i === 0 ? 0 : ytd)}</td>
+        </tr>
+      `;
+    })
+    .join('');
 }
 
 // =====================================
