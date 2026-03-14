@@ -351,8 +351,9 @@ function parseCSV(csvText) {
   const headerLine = lines[0];
   const headers = headerLine.split(";").map((h) => h.trim().replace(/\r/g, ""));
 
-  // Find the starting column for data (skip first columns that might be labels)
-  let dataStartCol = 1;
+  // Find the starting column for headers (branch names) and data (values)
+  // These can differ: e.g. kanca only has branches at col 1 in header but a label at col 1 in data
+  let headerStartCol = 1;
   if (
     headers[1] === "" ||
     headers[1].toLowerCase().includes("dpk") ||
@@ -361,10 +362,28 @@ function parseCSV(csvText) {
     headers[1].toLowerCase().includes("depo") ||
     headers[1].toLowerCase().includes("tabungan")
   ) {
-    dataStartCol = 2;
+    headerStartCol = 2;
   }
 
-  const ukerNames = headers.slice(dataStartCol);
+  // Check first data row to detect if data has a label column
+  let dataStartCol = headerStartCol;
+  if (lines.length > 1) {
+    const firstDataValues = lines[1].split(";").map((v) => v.trim().replace(/\r/g, ""));
+    if (firstDataValues.length > 1) {
+      const col1 = firstDataValues[1].toLowerCase();
+      if (
+        col1.includes("dpk") ||
+        col1.includes("casa") ||
+        col1.includes("giro") ||
+        col1.includes("depo") ||
+        col1.includes("tabungan")
+      ) {
+        dataStartCol = Math.max(headerStartCol, 2);
+      }
+    }
+  }
+
+  const ukerNames = headers.slice(headerStartCol);
 
   // Parse data rows
   const dates = [];
@@ -1072,7 +1091,7 @@ function getMonthlyDataForUker(uker) {
     
     let value = 0;
     if (uker === ALL_BRANCHES_VALUE) {
-      value = filteredUkers.reduce((sum, name) => sum + (data[name]?.[index] || 0), 0);
+      value = Math.round(filteredUkers.reduce((sum, name) => sum + (data[name]?.[index] || 0), 0));
     } else {
       value = data[uker][index] || 0;
     }
@@ -1464,9 +1483,9 @@ function updateComparisonTable() {
 
   const rows = selectedMonths.map((month) => {
     const values = monthlyData[month].map((d) => d.value).filter((v) => typeof v === 'number' && !Number.isNaN(v));
-    const ending = values.length ? values[values.length - 1] : 0;
-    const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-    const bottom = values.length ? Math.min(...values) : 0;
+    const ending = values.length ? Math.round(values[values.length - 1]) : 0;
+    const avg = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+    const bottom = values.length ? Math.round(Math.min(...values)) : 0;
     return { month, ending, avg, bottom };
   });
 
