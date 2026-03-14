@@ -1470,27 +1470,27 @@ function updateComparisonTable() {
     return { month, ending, avg, bottom };
   });
 
-  const firstEnding = rows[0].ending;
+  const firstAvg = rows[0].avg;
   const firstBottom = rows[0].bottom;
 
   const formatDelta = (value) => {
-    if (value > 0) return `<span class="delta-cell positive">▲ ${formatNumber(value, 0)}</span>`;
-    if (value < 0) return `<span class="delta-cell negative">▼ ${formatNumber(Math.abs(value), 0)}</span>`;
+    if (value > 0) return `<span class="delta-cell positive">▲ ${formatNumber(value, 1)}</span>`;
+    if (value < 0) return `<span class="delta-cell negative">▼ ${formatNumber(Math.abs(value), 1)}</span>`;
     return `<span class="delta-cell neutral">-</span>`;
   };
 
   avgBody.innerHTML = rows
     .map((row, i) => {
-      const prevEnding = i > 0 ? rows[i - 1].ending : row.ending;
-      const mtd = row.ending - prevEnding;
-      const ytd = row.ending - firstEnding;
+      const prevAvg = i > 0 ? rows[i - 1].avg : row.avg;
+      const mtd = row.avg - prevAvg;
+      const ytd = row.avg - firstAvg;
       const avgRatio = row.ending > 0 ? (row.avg / row.ending) * 100 : 0;
       return `
         <tr>
           <td>${row.month}</td>
-          <td class="value">${formatNumber(row.ending, 0)}</td>
-          <td class="value">${formatNumber(row.avg, 0)}</td>
-          <td class="value">${formatNumber(avgRatio, 0)}%</td>
+          <td class="value">${formatNumber(row.ending, 1)}</td>
+          <td class="value">${formatNumber(row.avg, 1)}</td>
+          <td class="value">${formatNumber(avgRatio, 1)}%</td>
           <td class="value">${formatDelta(i === 0 ? 0 : mtd)}</td>
           <td class="value">${formatDelta(i === 0 ? 0 : ytd)}</td>
         </tr>
@@ -1507,9 +1507,9 @@ function updateComparisonTable() {
       return `
         <tr>
           <td>${row.month}</td>
-          <td class="value">${formatNumber(row.ending, 0)}</td>
-          <td class="value">${formatNumber(row.bottom, 0)}</td>
-          <td class="value">${formatNumber(bottomRatio, 0)}%</td>
+          <td class="value">${formatNumber(row.ending, 1)}</td>
+          <td class="value">${formatNumber(row.bottom, 1)}</td>
+          <td class="value">${formatNumber(bottomRatio, 1)}%</td>
           <td class="value">${formatDelta(i === 0 ? 0 : mtd)}</td>
           <td class="value">${formatDelta(i === 0 ? 0 : ytd)}</td>
         </tr>
