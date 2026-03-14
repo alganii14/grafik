@@ -1474,8 +1474,8 @@ function updateComparisonTable() {
   const firstBottom = rows[0].bottom;
 
   const formatDelta = (value) => {
-    if (value > 0) return `<span class="delta-cell positive">▲ ${formatNumber(value, 1)}</span>`;
-    if (value < 0) return `<span class="delta-cell negative">▼ ${formatNumber(Math.abs(value), 1)}</span>`;
+    if (value > 0) return `<span class="delta-cell positive">▲ ${formatNumber(value, 0)}</span>`;
+    if (value < 0) return `<span class="delta-cell negative">▼ ${formatNumber(Math.abs(value), 0)}</span>`;
     return `<span class="delta-cell neutral">-</span>`;
   };
 
@@ -1488,8 +1488,8 @@ function updateComparisonTable() {
       return `
         <tr>
           <td>${row.month}</td>
-          <td class="value">${formatNumber(row.ending, 1)}</td>
-          <td class="value">${formatNumber(row.avg, 1)}</td>
+          <td class="value">${formatNumber(row.ending, 0)}</td>
+          <td class="value">${formatNumber(row.avg, 0)}</td>
           <td class="value">${formatNumber(avgRatio, 1)}%</td>
           <td class="value">${formatDelta(i === 0 ? 0 : mtd)}</td>
           <td class="value">${formatDelta(i === 0 ? 0 : ytd)}</td>
@@ -1507,8 +1507,8 @@ function updateComparisonTable() {
       return `
         <tr>
           <td>${row.month}</td>
-          <td class="value">${formatNumber(row.ending, 1)}</td>
-          <td class="value">${formatNumber(row.bottom, 1)}</td>
+          <td class="value">${formatNumber(row.ending, 0)}</td>
+          <td class="value">${formatNumber(row.bottom, 0)}</td>
           <td class="value">${formatNumber(bottomRatio, 1)}%</td>
           <td class="value">${formatDelta(i === 0 ? 0 : mtd)}</td>
           <td class="value">${formatDelta(i === 0 ? 0 : ytd)}</td>
