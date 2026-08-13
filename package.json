@@ -1,0 +1,11 @@
+{
+  "name": "dpk-chart-viewer",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@vercel/functions": "^3.9.3"
+  }
+}
