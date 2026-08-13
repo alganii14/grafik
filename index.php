@@ -1,3 +1,9 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/auth.php';
+auth_require_login();
+?>
 <!doctype html>
 <html lang="id" data-theme="light">
   <head>
@@ -23,6 +29,7 @@
     />
 
     <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="auth-dashboard.css?v=1" />
   </head>
   <body>
     <div class="app-container">
@@ -47,6 +54,21 @@
             <div class="last-update" id="lastUpdate">
               <span>Last update:</span>
               <span id="lastUpdateTime">-</span>
+            </div>
+            <div class="user-menu" aria-label="Akun pengguna">
+              <span class="user-avatar" aria-hidden="true"><?php echo htmlspecialchars(strtoupper(substr(auth_current_user(), 0, 1)), ENT_QUOTES, 'UTF-8'); ?></span>
+              <span class="user-details">
+                <strong><?php echo htmlspecialchars(auth_current_user(), ENT_QUOTES, 'UTF-8'); ?></strong>
+                <small>Administrator</small>
+              </span>
+              <form action="logout.php" method="post">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(auth_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>" />
+                <button class="logout-button" type="submit" title="Keluar dari dashboard" aria-label="Keluar dari dashboard">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10 17l5-5-5-5M15 12H3M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+                  </svg>
+                </button>
+              </form>
             </div>
           </div>
         </div>

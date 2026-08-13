@@ -1,0 +1,187 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/auth.php';
+
+if (auth_is_authenticated()) {
+    header('Location: index.php');
+    exit;
+}
+
+$error = '';
+$username = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim((string) ($_POST['username'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
+    $token = (string) ($_POST['csrf_token'] ?? '');
+    $waitSeconds = auth_seconds_until_unlock();
+
+    if (!auth_verify_csrf($token)) {
+        $error = 'Sesi formulir sudah berakhir. Muat ulang halaman lalu coba lagi.';
+    } elseif ($waitSeconds > 0) {
+        $error = "Terlalu banyak percobaan. Coba lagi dalam {$waitSeconds} detik.";
+    } elseif ($username === '' || $password === '') {
+        $error = 'Username dan password wajib diisi.';
+    } elseif (auth_attempt_login($username, $password)) {
+        header('Location: index.php');
+        exit;
+    } else {
+        $waitSeconds = auth_seconds_until_unlock();
+        $error = $waitSeconds > 0
+            ? "Terlalu banyak percobaan. Coba lagi dalam {$waitSeconds} detik."
+            : 'Username atau password tidak sesuai.';
+    }
+}
+
+$loggedOut = isset($_GET['logged_out']);
+?>
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Login aman ke DPK Chart Viewer" />
+    <meta name="theme-color" content="#07152f" />
+    <title>Login | DPK Chart Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="login.css?v=1" />
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="insight-panel" aria-label="Tentang DPK Chart Viewer">
+        <div class="orb orb-one"></div>
+        <div class="orb orb-two"></div>
+
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M6 22V13M13 22V8M20 22v-6M27 22V5" /></svg>
+          </span>
+          <span>DPK <strong>Insight</strong></span>
+        </div>
+
+        <div class="hero-copy">
+          <span class="eyebrow"><i></i> Real-time dashboard</span>
+          <h1>Data yang jelas.<br /><em>Keputusan lebih cepat.</em></h1>
+          <p>Pantau pertumbuhan DPK, bandingkan performa unit kerja, dan temukan insight penting dalam satu dashboard.</p>
+        </div>
+
+        <div class="preview-card" aria-hidden="true">
+          <div class="preview-top">
+            <div><small>Total DPK</small><strong>Rp 24,8 T</strong></div>
+            <span>+8.4%</span>
+          </div>
+          <svg class="sparkline" viewBox="0 0 520 130" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#54d8ff" stop-opacity=".38" />
+                <stop offset="1" stop-color="#54d8ff" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path class="area" d="M0 116 C45 106 55 73 101 86 S166 65 202 71 S274 92 312 52 S370 64 410 40 S475 52 520 13 L520 130 L0 130 Z" />
+            <path class="line" d="M0 116 C45 106 55 73 101 86 S166 65 202 71 S274 92 312 52 S370 64 410 40 S475 52 520 13" />
+          </svg>
+          <div class="preview-meta"><span>Jan</span><span>Mar</span><span>Mei</span><span>Jul</span><span>Sep</span><span>Des</span></div>
+        </div>
+
+        <p class="panel-footer">Internal Analytics Platform <span></span> 2026</p>
+      </section>
+
+      <section class="form-panel">
+        <div class="mobile-brand brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M6 22V13M13 22V8M20 22v-6M27 22V5" /></svg>
+          </span>
+          <span>DPK <strong>Insight</strong></span>
+        </div>
+
+        <div class="login-card">
+          <div class="welcome-icon" aria-hidden="true">
+            <svg viewBox="0 0 28 28"><path d="M14 3 5 7v6c0 5.6 3.7 9.8 9 12 5.3-2.2 9-6.4 9-12V7l-9-4Z" /><path d="m10 14 2.5 2.5L18 11" /></svg>
+          </div>
+          <div class="form-heading">
+            <span class="section-label">Akses dashboard</span>
+            <h2>Selamat datang kembali</h2>
+            <p>Masuk dengan akun Anda untuk melanjutkan.</p>
+          </div>
+
+          <?php if ($loggedOut): ?>
+            <div class="alert alert-success" role="status">
+              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+              Anda telah keluar dengan aman.
+            </div>
+          <?php endif; ?>
+
+          <?php if ($error !== ''): ?>
+            <div class="alert alert-error" role="alert">
+              <svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01M10.3 3.7 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z" /></svg>
+              <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+          <?php endif; ?>
+
+          <form id="loginForm" method="post" action="login.php" novalidate>
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(auth_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>" />
+
+            <div class="field-group">
+              <label for="username">Username</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z" /></svg>
+                <input id="username" name="username" type="text" autocomplete="username" placeholder="Masukkan username" value="<?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>" required autofocus />
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label for="password">Password</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="3" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+                <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Masukkan password" required />
+                <button class="password-toggle" id="passwordToggle" type="button" aria-label="Tampilkan password" aria-pressed="false">
+                  <svg class="eye-open" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></svg>
+                  <svg class="eye-closed" viewBox="0 0 24 24"><path d="m3 3 18 18M10.6 6.1A11 11 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.1 2.8M6.6 6.6C3.6 8.4 2 12 2 12s3.5 6 10 6c1.8 0 3.3-.5 4.6-1.2" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <button class="submit-button" id="submitButton" type="submit">
+              <span>Masuk ke Dashboard</span>
+              <svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
+            </button>
+          </form>
+
+          <div class="security-note">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" /></svg>
+            <span>Koneksi dilindungi. Jangan bagikan informasi akun Anda.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const toggle = document.getElementById('passwordToggle');
+      const password = document.getElementById('password');
+      const form = document.getElementById('loginForm');
+      const submitButton = document.getElementById('submitButton');
+
+      toggle.addEventListener('click', () => {
+        const show = password.type === 'password';
+        password.type = show ? 'text' : 'password';
+        toggle.classList.toggle('showing', show);
+        toggle.setAttribute('aria-pressed', String(show));
+        toggle.setAttribute('aria-label', show ? 'Sembunyikan password' : 'Tampilkan password');
+      });
+
+      form.addEventListener('submit', (event) => {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          form.reportValidity();
+          return;
+        }
+        submitButton.classList.add('loading');
+        submitButton.disabled = true;
+        submitButton.querySelector('span').textContent = 'Memverifikasi...';
+      });
+    </script>
+  </body>
+</html>
