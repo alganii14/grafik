@@ -116,6 +116,63 @@ const CONFIG = {
   },
 };
 
+const DEFAULT_MONTH_COLORS = Object.freeze({
+  Januari: "#10b981",
+  Februari: "#3b82f6",
+  Maret: "#111827",
+  April: "#8b5cf6",
+  Mei: "#ec4899",
+  Juni: "#14b8a6",
+  Juli: "#f97316",
+  Agustus: "#eab308",
+  September: "#06b6d4",
+  Oktober: "#a855f7",
+  November: "#22c55e",
+  Desember: "#f59e0b",
+});
+
+const MONTH_COLOR_STORAGE_KEY = "dpk-chart-month-colors";
+
+function loadMonthColors() {
+  const colors = { ...DEFAULT_MONTH_COLORS };
+
+  try {
+    const savedColors = JSON.parse(localStorage.getItem(MONTH_COLOR_STORAGE_KEY));
+    if (!savedColors || typeof savedColors !== "object") return colors;
+
+    Object.keys(colors).forEach((month) => {
+      if (/^#[0-9a-f]{6}$/i.test(savedColors[month])) {
+        colors[month] = savedColors[month];
+      }
+    });
+  } catch (error) {
+    console.warn("Warna bulan tersimpan tidak dapat dibaca:", error);
+  }
+
+  return colors;
+}
+
+function saveMonthColors() {
+  try {
+    localStorage.setItem(MONTH_COLOR_STORAGE_KEY, JSON.stringify(state.monthColors));
+  } catch (error) {
+    console.warn("Warna bulan tidak dapat disimpan:", error);
+  }
+}
+
+function hexToRgba(hex, alpha = 0.1) {
+  const normalizedHex = hex.replace("#", "");
+  const red = parseInt(normalizedHex.slice(0, 2), 16);
+  const green = parseInt(normalizedHex.slice(2, 4), 16);
+  const blue = parseInt(normalizedHex.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function getMonthColor(month) {
+  const border = state.monthColors[month] || "#6b7280";
+  return { border, bg: hexToRgba(border) };
+}
+
 // =====================================
 // State Management
 // =====================================
@@ -131,6 +188,7 @@ const state = {
   comparisonChart: null,
   selectedComparisonUker: null,
   selectedMonths: [],
+  monthColors: loadMonthColors(),
   dateLabelMode: "range",
   chartTitleVisibility: "hide",
   autoRefreshEnabled: false,
@@ -1178,6 +1236,93 @@ function populateMonthSelectors() {
     monthSelectionHint.textContent = `${state.selectedMonths.length} bulan dipilih`;
   };
 
+  let monthColorControls = document.getElementById('monthColorControls');
+  if (!monthColorControls) {
+    monthColorControls = document.createElement('div');
+    monthColorControls.id = 'monthColorControls';
+    monthColorControls.setAttribute('aria-label', 'Atur warna grafik per bulan');
+    Object.assign(monthColorControls.style, {
+      display: 'flex',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: '0.5rem',
+      marginTop: '0.35rem',
+    });
+    monthChips.insertAdjacentElement('afterend', monthColorControls);
+  }
+
+  const renderColorControls = () => {
+    monthColorControls.replaceChildren();
+
+    const title = document.createElement('span');
+    title.textContent = 'Warna grafik:';
+    Object.assign(title.style, {
+      color: 'var(--text-secondary)',
+      fontSize: '0.78rem',
+      fontWeight: '600',
+    });
+    monthColorControls.appendChild(title);
+
+    state.selectedMonths.forEach((month) => {
+      const colorLabel = document.createElement('label');
+      colorLabel.title = `Ubah warna ${month}`;
+      Object.assign(colorLabel.style, {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.3rem',
+        color: 'var(--text-secondary)',
+        fontSize: '0.78rem',
+        cursor: 'pointer',
+      });
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.value = state.monthColors[month] || DEFAULT_MONTH_COLORS[month];
+      colorInput.setAttribute('aria-label', `Warna ${month}`);
+      Object.assign(colorInput.style, {
+        width: '1.75rem',
+        height: '1.75rem',
+        padding: '1px',
+        border: '1px solid var(--border-color)',
+        borderRadius: '0.4rem',
+        background: 'transparent',
+        cursor: 'pointer',
+      });
+
+      colorInput.addEventListener('input', (event) => {
+        state.monthColors[month] = event.target.value;
+        saveMonthColors();
+        updateComparisonChart();
+      });
+
+      const monthName = document.createElement('span');
+      monthName.textContent = month;
+      colorLabel.append(colorInput, monthName);
+      monthColorControls.appendChild(colorLabel);
+    });
+
+    const resetButton = document.createElement('button');
+    resetButton.type = 'button';
+    resetButton.textContent = 'Reset warna';
+    resetButton.title = 'Kembalikan semua warna ke pengaturan awal';
+    Object.assign(resetButton.style, {
+      border: '1px solid var(--border-color)',
+      borderRadius: '0.4rem',
+      padding: '0.3rem 0.55rem',
+      background: 'rgba(148, 163, 184, 0.12)',
+      color: 'var(--text-secondary)',
+      fontSize: '0.75rem',
+      cursor: 'pointer',
+    });
+    resetButton.addEventListener('click', () => {
+      state.monthColors = { ...DEFAULT_MONTH_COLORS };
+      saveMonthColors();
+      renderColorControls();
+      updateComparisonChart();
+    });
+    monthColorControls.appendChild(resetButton);
+  };
+
   const renderChips = () => {
     monthChips.innerHTML = '';
     availableMonths.forEach((month) => {
@@ -1204,6 +1349,7 @@ function populateMonthSelectors() {
       monthChips.appendChild(chip);
     });
 
+    renderColorControls();
     updateHint();
   };
 
@@ -1236,25 +1382,6 @@ function updateComparisonChart() {
     ...selectedMonths.flatMap((m) => monthlyData[m].map((d) => d.day)),
   );
   const labels = Array.from({ length: maxDay }, (_, i) => i + 1);
-  
-  // Get colors based on month selection
-  const getMonthColor = (month) => {
-    const colorMap = {
-      'Januari': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
-      'Februari': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
-      'Maret': { border: '#111827', bg: 'rgba(17, 24, 39, 0.1)' },
-      'April': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
-      'Mei': { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },
-      'Juni': { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.1)' },
-      'Juli': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' },
-      'Agustus': { border: '#eab308', bg: 'rgba(234, 179, 8, 0.1)' },
-      'September': { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)' },
-      'Oktober': { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.1)' },
-      'November': { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
-      'Desember': { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
-    };
-    return colorMap[month] || { border: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
-  };
   
   const chartData = {
     labels: labels,
