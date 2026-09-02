@@ -1247,7 +1247,7 @@ function updateComparisonChart() {
       'Mei': { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },
       'Juni': { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.1)' },
       'Juli': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' },
-      'Agustus': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+      'Agustus': { border: '#eab308', bg: 'rgba(234, 179, 8, 0.1)' },
       'September': { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)' },
       'Oktober': { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.1)' },
       'November': { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
