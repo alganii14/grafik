@@ -1,0 +1,217 @@
+import csv
+from pathlib import Path
+
+BRANCH_MAPPING = {
+    5: "KC Bandung AA",
+    25: "KC Garut",
+    28: "KC Indramayu",
+    46: "KC Majalengka",
+    75: "KC Purwakarta",
+    92: "KC Sukabumi",
+    94: "KC Sumedang",
+    100: "KC Tasikmalaya",
+    104: "KC Ciamis",
+    105: "KC Cianjur",
+    107: "KC Cirebon Kartini",
+    123: "KC Subang",
+    132: "KC Majalaya",
+    133: "KC Kuningan",
+    137: "KC Cimahi",
+    161: "KC Singaparna",
+    162: "KC Banjar",
+    165: "KC Jatibarang",
+    181: "KC Cibadak",
+    286: "KC Bandung Dewi Sartika",
+    337: "KC Bandung Naripan",
+    354: "KC Bandung A.H. Nasution",
+    355: "KC Pamanukan",
+    389: "KC Bandung Martadinata",
+    401: "KC Bandung Kopo",
+    405: "KC Bandung Dago",
+    406: "KC Cirebon Gunung Jati",
+    407: "KC Bandung Sukarno Hatta",
+    408: "KC Bandung Setiabudi",
+    544: "KC Soreang",
+}
+
+DATE_SOURCES = [
+    ("10-May", "SSA Simpanan 10 Mei 2026.csv"),
+    ("11-May", "11 Mei .csv"),
+    ("12-May", "SSA Simpanan 12 Mei.csv"),
+    ("13-May", "13 mei dr hourly (h-1 hari).csv"),
+    ("14-May", "SSA Simpanan 14 Mei 2026 (1).csv"),
+    ("15-May", "SSA Simpanan 15 Mei 2026.csv"),
+]
+
+LABEL_MAP = {
+    "depo": "DEPO",
+    "giro": "GIRO",
+    "tabungan": "TAB",
+    "dpk": "DPK",
+    "casa": "CASA",
+}
+
+
+def parse_int(value: str) -> int:
+    if value is None:
+        return 0
+    s = str(value).strip()
+    if not s or s in {"-", "- ", "-   "}:
+        return 0
+    s = s.replace(" ", "")
+    if not s or s == "0":
+        return 0
+    s = s.replace(".", "").replace(",", ".")
+    try:
+        return int(round(float(s)))
+    except Exception:
+        return 0
+
+
+def format_number(value: int) -> str:
+    if value >= 1000:
+        return f"{value:,}".replace(",", ".")
+    return str(value)
+
+
+def is_grand_total(value: str) -> bool:
+    if value is None:
+        return False
+    s = str(value).strip().lower()
+    return "grand total" in s or s in {"grand", "total"}
+
+
+def has_skip_keyword(row: list[str]) -> bool:
+    for cell in row:
+        if cell is None:
+            continue
+        s = str(cell).lower()
+        if "kanwil" in s or "nwil" in s:
+            return True
+    return False
+
+
+def get_code(row: list[str]) -> tuple[int | None, int | None]:
+    for idx in (0, 1):
+        if idx >= len(row):
+            continue
+        token = row[idx].strip()
+        if is_grand_total(token):
+            return None, None
+        try:
+            return int(token), idx
+        except Exception:
+            continue
+    return None, None
+
+
+def parse_ssa_file(path: Path) -> dict:
+    data: dict[str, dict[str, int]] = {}
+    with path.open("r", encoding="utf-8") as f:
+        reader = csv.reader(f, delimiter=";")
+        next(reader, None)
+        for row in reader:
+            if len(row) < 5:
+                continue
+            if has_skip_keyword(row):
+                continue
+            if is_grand_total(row[0]) or (len(row) > 1 and is_grand_total(row[1])):
+                continue
+
+            code, code_idx = get_code(row)
+            if code is None or code not in BRANCH_MAPPING or code_idx is None:
+                continue
+
+            base = code_idx
+            if base + 4 >= len(row):
+                continue
+
+            branch = BRANCH_MAPPING[code]
+            depo = parse_int(row[base + 2])
+            giro = parse_int(row[base + 3])
+            tabungan = parse_int(row[base + 4])
+
+            data[branch] = {
+                "depo": depo,
+                "giro": giro,
+                "tabungan": tabungan,
+                "dpk": depo + giro + tabungan,
+                "casa": giro + tabungan,
+            }
+    return data
+
+
+def remove_trailing_separators(lines: list[str]) -> list[str]:
+    trimmed = list(lines)
+    while trimmed and trimmed[-1].strip().replace(";", "").strip() == "":
+        trimmed.pop()
+    return trimmed
+
+
+def update_csv(csv_file: Path, date_label: str, data_type: str, branch_data: dict) -> None:
+    lines = csv_file.read_text(encoding="utf-8").splitlines(keepends=True)
+    if not lines:
+        raise ValueError(f"File kosong: {csv_file}")
+
+    header = lines[0].rstrip("\n").split(";")
+    is_double_header = len(header) > 1 and header[1].strip() == ""
+
+    if is_double_header:
+        branches = [name.strip() for name in header[2:] if name.strip()]
+        row = [date_label, LABEL_MAP[data_type]]
+    else:
+        branches = [name.strip() for name in header[1:] if name.strip()]
+        row = [date_label]
+
+    for branch in branches:
+        value = branch_data.get(branch, {}).get(data_type, 0)
+        row.append(f" {format_number(value)} ")
+
+    new_line = ";".join(row) + "\n"
+
+    body = lines[1:]
+    body = [
+        ln
+        for ln in body
+        if not ln.lstrip().startswith(f"{date_label};")
+    ]
+    body = remove_trailing_separators(body)
+    body.append(new_line)
+
+    csv_file.write_text("".join([lines[0]] + body), encoding="utf-8")
+
+
+def process_date(base_dir: Path, date_label: str, source_name: str) -> None:
+    source_path = base_dir / source_name
+    if not source_path.exists():
+        raise FileNotFoundError(f"Source tidak ditemukan: {source_name}")
+
+    data = parse_ssa_file(source_path)
+    if not data:
+        raise ValueError(f"Tidak ada data cabang terbaca dari {source_name}")
+
+    update_csv(base_dir / "depo.csv", date_label, "depo", data)
+    update_csv(base_dir / "giro.csv", date_label, "giro", data)
+    update_csv(base_dir / "tabungan.csv", date_label, "tabungan", data)
+    update_csv(base_dir / "dpk.csv", date_label, "dpk", data)
+    update_csv(base_dir / "casa.csv", date_label, "casa", data)
+
+    print(f"OK {date_label} <- {source_name} ({len(data)} cabang)")
+
+
+def main() -> None:
+    base_dir = Path(__file__).resolve().parent
+    print("=" * 70)
+    print("Update CSV konsol 10-15 Mei 2026")
+    print("=" * 70)
+
+    for date_label, source in DATE_SOURCES:
+        process_date(base_dir, date_label, source)
+
+    print("=" * 70)
+    print("Selesai.")
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    main()
