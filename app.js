@@ -222,6 +222,7 @@ const state = {
   currentMetric: "dpk",
   currentArea: "all",
   ccViewMode: "line_yoy",
+  ccSelectedYear: "all", // 'all' | '2025' | '2026' 
   selectedUkers: new Set(),
   allUkers: [],
   filteredUkers: [],
@@ -274,6 +275,8 @@ const elements = {
   toastContainer: document.getElementById("toastContainer"),
   modeDpkBtn: document.getElementById("modeDpkBtn"),
   modeCcBtn: document.getElementById("modeCcBtn"),
+  ccYearSelectGroup: document.getElementById("ccYearSelectGroup"),
+  ccYearSelect: document.getElementById("ccYearSelect"),
   ccViewModeGroup: document.getElementById("ccViewModeGroup"),
   ccViewModeSelect: document.getElementById("ccViewModeSelect"),
   dateLabelModeGroup: document.getElementById("dateLabelModeGroup"),
@@ -572,6 +575,16 @@ function parseCSV(csvText) {
   return { dates, ukerNames, data };
 }
 
+function setCcSelectedYear(year) {
+  state.ccSelectedYear = year; // 'all' | '2025' | '2026'
+  if (elements.ccYearSelect) {
+    elements.ccYearSelect.value = year;
+  }
+  populateMonthSelectors();
+  updateCcComparisonChart();
+  updateCcTables();
+}
+
 function getFilteredUkersForArea(ukerNames) {
   const cleaned = (ukerNames || []).filter((u) => u);
   if (state.currentArea === "all" || !CONFIG.areaMapping[state.currentArea]) {
@@ -807,6 +820,9 @@ function syncModeUI() {
 
   if (elements.ccViewModeGroup) {
     elements.ccViewModeGroup.style.display = isCc ? "flex" : "none";
+  }
+  if (elements.ccYearSelectGroup) {
+    elements.ccYearSelectGroup.style.display = isCc ? "flex" : "none";
   }
   if (elements.dateLabelModeGroup) {
     elements.dateLabelModeGroup.style.display = isCc ? "none" : "flex";
@@ -1180,65 +1196,97 @@ function updateCcComparisonChart() {
   const color2025 = state.ccYearColors?.['2025'] || DEFAULT_CC_YEAR_COLORS['2025'];
   const color2026 = state.ccYearColors?.['2026'] || DEFAULT_CC_YEAR_COLORS['2026'];
 
+  const selectedYear = state.ccSelectedYear || 'all';
+
   if (ccViewMode === 'timeline') {
     chartType = 'line';
-    labels = [
-      ...activeMonths.map((m) => m.slice(0, 3) + ' 25'),
-      ...activeMonths.filter((m) => {
+    let timelineLabels = [];
+    let timelineValues = [];
+
+    if (selectedYear === '2025') {
+      timelineLabels = activeMonths.map((m) => m.slice(0, 3) + ' 25');
+      timelineValues = val2025;
+    } else if (selectedYear === '2026') {
+      timelineLabels = activeMonths.filter((m) => {
         const idx = CC_MONTH_LIST.indexOf(m);
         return idx < 10 || (ukerData[12 + idx] > 0);
-      }).map((m) => m.slice(0, 3) + ' 26'),
-    ];
-    const timelineValues = [
-      ...val2025,
-      ...val2026.filter((v) => v !== null),
-    ];
+      }).map((m) => m.slice(0, 3) + ' 26');
+      timelineValues = val2026.filter((v) => v !== null);
+    } else {
+      timelineLabels = [
+        ...activeMonths.map((m) => m.slice(0, 3) + ' 25'),
+        ...activeMonths.filter((m) => {
+          const idx = CC_MONTH_LIST.indexOf(m);
+          return idx < 10 || (ukerData[12 + idx] > 0);
+        }).map((m) => m.slice(0, 3) + ' 26'),
+      ];
+      timelineValues = [
+        ...val2025,
+        ...val2026.filter((v) => v !== null),
+      ];
+    }
+
+    labels = timelineLabels;
+    const tColor = selectedYear === '2026' ? color2026 : color2025;
     datasets = [{
-      label: `Pencapaian ${isSavol ? 'SAVOL' : 'New User'}`,
+      label: `Pencapaian ${isSavol ? 'SAVOL' : 'New User'}${selectedYear !== 'all' ? ` (Tahun ${selectedYear})` : ''}`,
       data: timelineValues,
-      borderColor: color2025,
-      backgroundColor: hexToRgba(color2025, 0.15),
+      borderColor: tColor,
+      backgroundColor: hexToRgba(tColor, 0.15),
       fill: true,
       tension: 0.35,
       borderWidth: 2.5,
       pointRadius: 5,
       pointHoverRadius: 7,
-      pointBackgroundColor: color2025,
+      pointBackgroundColor: tColor,
     }];
   } else {
-    // Default: Line Chart YoY (2025 vs 2026)
+    // Default: Line Chart (2025 vs 2026 / Single Year)
     chartType = 'line';
     labels = activeMonths;
-    datasets = [
-      {
-        label: 'Tahun 2025',
-        data: val2025,
-        borderColor: color2025,
-        backgroundColor: hexToRgba(color2025, 0.1),
-        fill: false,
-        tension: 0.35,
-        borderWidth: 2.5,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        pointBackgroundColor: color2025,
-      },
-      {
-        label: 'Tahun 2026',
-        data: val2026,
-        borderColor: color2026,
-        backgroundColor: hexToRgba(color2026, 0.1),
-        fill: false,
-        tension: 0.35,
-        borderWidth: 2.5,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        pointBackgroundColor: color2026,
-        spanGaps: false,
-      }
-    ];
+
+    const ds2025 = {
+      label: 'Tahun 2025',
+      data: val2025,
+      borderColor: color2025,
+      backgroundColor: hexToRgba(color2025, 0.1),
+      fill: false,
+      tension: 0.35,
+      borderWidth: 2.5,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: color2025,
+    };
+
+    const ds2026 = {
+      label: 'Tahun 2026',
+      data: val2026,
+      borderColor: color2026,
+      backgroundColor: hexToRgba(color2026, 0.1),
+      fill: false,
+      tension: 0.35,
+      borderWidth: 2.5,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: color2026,
+      spanGaps: false,
+    };
+
+    if (selectedYear === '2025') {
+      datasets = [ds2025];
+    } else if (selectedYear === '2026') {
+      datasets = [ds2026];
+    } else {
+      datasets = [ds2025, ds2026];
+    }
   }
 
-  const chartTitle = `Pencapaian ${isSavol ? 'Sales Volume (SAVOL)' : 'New User CC'} - ${uker}`;
+  let yearSuffix = '';
+  if (selectedYear === '2025') yearSuffix = ' (Tahun 2025)';
+  else if (selectedYear === '2026') yearSuffix = ' (Tahun 2026)';
+  else yearSuffix = ' (2025 vs 2026)';
+
+  const chartTitle = `Pencapaian ${isSavol ? 'Sales Volume (SAVOL)' : 'New User CC'} - ${uker}${yearSuffix}`;
 
   const options = {
     responsive: true,
@@ -1373,81 +1421,13 @@ function updateCcTables() {
     return new Intl.NumberFormat('id-ID').format(Math.round(v));
   };
 
-  // 1. Table 1: Rekap Bulanan 2025 vs 2026
-  if (table1Title) {
-    table1Title.textContent = `📊 Rekap Bulanan 2025 vs 2026 (${uker})`;
-  }
-  if (avgHead) {
-    avgHead.innerHTML = `
-      <tr>
-        <th style="text-align: left;">Bulan</th>
-        <th style="text-align: right;">Pencapaian 2025</th>
-        <th style="text-align: right;">Pencapaian 2026</th>
-        <th style="text-align: right;">Growth YoY</th>
-        <th style="text-align: center; width: 95px;">% Growth</th>
-        <th style="text-align: center; width: 75px;">Status</th>
-      </tr>
-    `;
-  }
+  const selectedYear = state.ccSelectedYear || 'all';
 
   const activeMonths = CC_MONTH_LIST.filter((m) =>
     (state.selectedCcMonths && state.selectedCcMonths.length > 0)
       ? state.selectedCcMonths.includes(m)
       : (CC_MONTH_LIST.indexOf(m) < 10)
   );
-
-  let sum2025 = 0;
-  let sum2026 = 0;
-
-  let table1RowsHtml = '';
-  activeMonths.forEach((month) => {
-    const idx = CC_MONTH_LIST.indexOf(month);
-    const v25 = ukerData[idx] || 0;
-    const v26Raw = ukerData[12 + idx];
-    const hasV26 = (idx < 10) || (v26Raw !== null && v26Raw !== undefined && v26Raw > 0);
-    const v26 = hasV26 ? (v26Raw || 0) : null;
-
-    sum2025 += v25;
-    if (v26 !== null) {
-      sum2026 += v26;
-    }
-
-    let diff = null;
-    let pct = 0;
-    let isUp = true;
-    let sign = '';
-
-    if (v26 !== null) {
-      diff = v26 - v25;
-      pct = v25 > 0 ? (diff / v25 * 100) : 0;
-      isUp = diff >= 0;
-      sign = isUp ? '+' : '';
-    }
-
-    const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
-    const badgeIcon = isUp ? '▲' : '▼';
-    const statusText = (v26 === null)
-      ? '<span style="color:#94a3b8;">-</span>'
-      : (isUp
-        ? '<span style="color:#10b981;font-weight:600;">Naik</span>'
-        : '<span style="color:#ef4444;font-weight:600;">Turun</span>');
-
-    table1RowsHtml += `
-      <tr>
-        <td class="uker-name"><strong>${month}</strong></td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(v25)}</td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums;">${v26 !== null ? formatVal(v26) : '-'}</td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${v26 !== null ? (isUp ? '#10b981' : '#ef4444') : '#94a3b8'}; font-weight:600;">${v26 !== null ? `${sign}${formatVal(diff)}` : '-'}</td>
-        <td style="text-align: center;">${v26 !== null ? `<span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span>` : '-'}</td>
-        <td style="text-align: center;">${statusText}</td>
-      </tr>
-    `;
-  });
-
-  const totalDiff = sum2026 - sum2025;
-  const totalPct = sum2025 > 0 ? (totalDiff / sum2025 * 100) : 0;
-  const totalUp = totalDiff >= 0;
-  const totalSign = totalUp ? '+' : '';
 
   let totalLabel = `TOTAL (${activeMonths.length} Bulan)`;
   if (activeMonths.length === 10 && activeMonths[0] === 'Januari' && activeMonths[9] === 'Oktober') {
@@ -1458,70 +1438,394 @@ function updateCcTables() {
     totalLabel = `TOTAL (${activeMonths[0]})`;
   }
 
-  table1RowsHtml += `
-    <tr style="background: rgba(59, 130, 246, 0.08); font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.15);">
-      <td><strong>${totalLabel}</strong></td>
-      <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2025)}</strong></td>
-      <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2026)}</strong></td>
-      <td style="text-align: right; font-variant-numeric: tabular-nums; color:${totalUp ? '#10b981' : '#ef4444'}; font-weight:700;"><strong>${totalSign}${formatVal(totalDiff)}</strong></td>
-      <td style="text-align: center;"><span class="status-badge ${totalUp ? 'up' : 'down'}">${totalUp ? '▲' : '▼'} ${totalSign}${totalPct.toFixed(2)}%</span></td>
-      <td style="text-align: center;"><strong>${totalUp ? 'Naik' : 'Turun'}</strong></td>
-    </tr>
-  `;
+  // 1. Table 1: Rekap Bulanan
+  if (selectedYear === '2025') {
+    if (table1Title) table1Title.textContent = `📊 Rekap Bulanan Tahun 2025 (${uker})`;
+    if (avgHead) {
+      avgHead.innerHTML = `
+        <tr>
+          <th style="text-align: left;">Bulan</th>
+          <th style="text-align: right;">Pencapaian 2025</th>
+          <th style="text-align: center; width: 120px;">% Kontribusi</th>
+        </tr>
+      `;
+    }
 
-  avgBody.innerHTML = table1RowsHtml;
+    let sum2025All = 0;
+    activeMonths.forEach((m) => {
+      const idx = CC_MONTH_LIST.indexOf(m);
+      sum2025All += (ukerData[idx] || 0);
+    });
 
-  // 2. Table 2: Ranking Kanca (Top Performance berdasarkan Pertumbuhan YoY)
-  let rankingSubtitle = `${activeMonths.length} Bulan`;
-  if (activeMonths.length === 10 && activeMonths[0] === 'Januari' && activeMonths[9] === 'Oktober') {
-    rankingSubtitle = 'YTD 2026';
-  } else if (activeMonths.length === 12) {
-    rankingSubtitle = 'Tahun 2026';
-  } else if (activeMonths.length === 1) {
-    rankingSubtitle = activeMonths[0];
-  }
+    let table1RowsHtml = '';
+    activeMonths.forEach((month) => {
+      const idx = CC_MONTH_LIST.indexOf(month);
+      const v25 = ukerData[idx] || 0;
+      const share = sum2025All > 0 ? (v25 / sum2025All * 100) : 0;
 
-  if (table2Title) {
-    table2Title.textContent = `🏆 Ranking Kanca - Top YoY Growth (${isSavol ? 'SAVOL' : 'New User'} ${rankingSubtitle})`;
-  }
-  if (bottomHead) {
-    bottomHead.innerHTML = `
-      <tr>
-        <th style="width: 60px; text-align: center;">Rank</th>
-        <th style="text-align: left;">Unit Kerja</th>
-        <th style="text-align: right;">Total 2025</th>
-        <th style="text-align: right;">Total 2026</th>
-        <th style="text-align: right;">Growth YoY</th>
-        <th style="text-align: center; width: 105px;">% Growth</th>
+      table1RowsHtml += `
+        <tr>
+          <td class="uker-name"><strong>${month}</strong></td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(v25)}</td>
+          <td style="text-align: center;"><span class="status-badge up">${share.toFixed(2)}%</span></td>
+        </tr>
+      `;
+    });
+
+    table1RowsHtml += `
+      <tr style="background: rgba(59, 130, 246, 0.08); font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.15);">
+        <td><strong>${totalLabel}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:#3b82f6;"><strong>${formatVal(sum2025All)}</strong></td>
+        <td style="text-align: center;"><span class="status-badge up">100.00%</span></td>
       </tr>
     `;
+    avgBody.innerHTML = table1RowsHtml;
+
+  } else if (selectedYear === '2026') {
+    if (table1Title) table1Title.textContent = `📊 Rekap Bulanan Tahun 2026 (${uker})`;
+    if (avgHead) {
+      avgHead.innerHTML = `
+        <tr>
+          <th style="text-align: left;">Bulan</th>
+          <th style="text-align: right;">Pencapaian 2026</th>
+          <th style="text-align: right;">Pencapaian 2025 (Ref)</th>
+          <th style="text-align: right;">Growth YoY</th>
+          <th style="text-align: center; width: 95px;">% Growth</th>
+          <th style="text-align: center; width: 75px;">Status</th>
+        </tr>
+      `;
+    }
+
+    let sum2025 = 0;
+    let sum2026 = 0;
+
+    let table1RowsHtml = '';
+    activeMonths.forEach((month) => {
+      const idx = CC_MONTH_LIST.indexOf(month);
+      const v25 = ukerData[idx] || 0;
+      const v26Raw = ukerData[12 + idx];
+      const hasV26 = (idx < 10) || (v26Raw !== null && v26Raw !== undefined && v26Raw > 0);
+      const v26 = hasV26 ? (v26Raw || 0) : null;
+
+      sum2025 += v25;
+      if (v26 !== null) sum2026 += v26;
+
+      let diff = null;
+      let pct = 0;
+      let isUp = true;
+      let sign = '';
+
+      if (v26 !== null) {
+        diff = v26 - v25;
+        pct = v25 > 0 ? (diff / v25 * 100) : 0;
+        isUp = diff >= 0;
+        sign = isUp ? '+' : '';
+      }
+
+      const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
+      const badgeIcon = isUp ? '▲' : '▼';
+      const statusText = (v26 === null)
+        ? '<span style="color:#94a3b8;">-</span>'
+        : (isUp
+          ? '<span style="color:#10b981;font-weight:600;">Naik</span>'
+          : '<span style="color:#ef4444;font-weight:600;">Turun</span>');
+
+      table1RowsHtml += `
+        <tr>
+          <td class="uker-name"><strong>${month}</strong></td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; font-weight:600; color:#10b981;">${v26 !== null ? formatVal(v26) : '-'}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color:#94a3b8;">${formatVal(v25)}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color:${v26 !== null ? (isUp ? '#10b981' : '#ef4444') : '#94a3b8'}; font-weight:600;">${v26 !== null ? `${sign}${formatVal(diff)}` : '-'}</td>
+          <td style="text-align: center;">${v26 !== null ? `<span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span>` : '-'}</td>
+          <td style="text-align: center;">${statusText}</td>
+        </tr>
+      `;
+    });
+
+    const totalDiff = sum2026 - sum2025;
+    const totalPct = sum2025 > 0 ? (totalDiff / sum2025 * 100) : 0;
+    const totalUp = totalDiff >= 0;
+    const totalSign = totalUp ? '+' : '';
+
+    table1RowsHtml += `
+      <tr style="background: rgba(16, 185, 129, 0.08); font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.15);">
+        <td><strong>${totalLabel}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:#10b981;"><strong>${formatVal(sum2026)}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:#94a3b8;"><strong>${formatVal(sum2025)}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${totalUp ? '#10b981' : '#ef4444'}; font-weight:700;"><strong>${totalSign}${formatVal(totalDiff)}</strong></td>
+        <td style="text-align: center;"><span class="status-badge ${totalUp ? 'up' : 'down'}">${totalUp ? '▲' : '▼'} ${totalSign}${totalPct.toFixed(2)}%</span></td>
+        <td style="text-align: center;"><strong>${totalUp ? 'Naik' : 'Turun'}</strong></td>
+      </tr>
+    `;
+    avgBody.innerHTML = table1RowsHtml;
+
+  } else {
+    // Both: 2025 vs 2026
+    if (table1Title) table1Title.textContent = `📊 Rekap Bulanan 2025 vs 2026 (${uker})`;
+    if (avgHead) {
+      avgHead.innerHTML = `
+        <tr>
+          <th style="text-align: left;">Bulan</th>
+          <th style="text-align: right;">Pencapaian 2025</th>
+          <th style="text-align: right;">Pencapaian 2026</th>
+          <th style="text-align: right;">Growth YoY</th>
+          <th style="text-align: center; width: 95px;">% Growth</th>
+          <th style="text-align: center; width: 75px;">Status</th>
+        </tr>
+      `;
+    }
+
+    let sum2025 = 0;
+    let sum2026 = 0;
+
+    let table1RowsHtml = '';
+    activeMonths.forEach((month) => {
+      const idx = CC_MONTH_LIST.indexOf(month);
+      const v25 = ukerData[idx] || 0;
+      const v26Raw = ukerData[12 + idx];
+      const hasV26 = (idx < 10) || (v26Raw !== null && v26Raw !== undefined && v26Raw > 0);
+      const v26 = hasV26 ? (v26Raw || 0) : null;
+
+      sum2025 += v25;
+      if (v26 !== null) sum2026 += v26;
+
+      let diff = null;
+      let pct = 0;
+      let isUp = true;
+      let sign = '';
+
+      if (v26 !== null) {
+        diff = v26 - v25;
+        pct = v25 > 0 ? (diff / v25 * 100) : 0;
+        isUp = diff >= 0;
+        sign = isUp ? '+' : '';
+      }
+
+      const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
+      const badgeIcon = isUp ? '▲' : '▼';
+      const statusText = (v26 === null)
+        ? '<span style="color:#94a3b8;">-</span>'
+        : (isUp
+          ? '<span style="color:#10b981;font-weight:600;">Naik</span>'
+          : '<span style="color:#ef4444;font-weight:600;">Turun</span>');
+
+      table1RowsHtml += `
+        <tr>
+          <td class="uker-name"><strong>${month}</strong></td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(v25)}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">${v26 !== null ? formatVal(v26) : '-'}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color:${v26 !== null ? (isUp ? '#10b981' : '#ef4444') : '#94a3b8'}; font-weight:600;">${v26 !== null ? `${sign}${formatVal(diff)}` : '-'}</td>
+          <td style="text-align: center;">${v26 !== null ? `<span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span>` : '-'}</td>
+          <td style="text-align: center;">${statusText}</td>
+        </tr>
+      `;
+    });
+
+    const totalDiff = sum2026 - sum2025;
+    const totalPct = sum2025 > 0 ? (totalDiff / sum2025 * 100) : 0;
+    const totalUp = totalDiff >= 0;
+    const totalSign = totalUp ? '+' : '';
+
+    table1RowsHtml += `
+      <tr style="background: rgba(59, 130, 246, 0.08); font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.15);">
+        <td><strong>${totalLabel}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2025)}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2026)}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${totalUp ? '#10b981' : '#ef4444'}; font-weight:700;"><strong>${totalSign}${formatVal(totalDiff)}</strong></td>
+        <td style="text-align: center;"><span class="status-badge ${totalUp ? 'up' : 'down'}">${totalUp ? '▲' : '▼'} ${totalSign}${totalPct.toFixed(2)}%</span></td>
+        <td style="text-align: center;"><strong>${totalUp ? 'Naik' : 'Turun'}</strong></td>
+      </tr>
+    `;
+    avgBody.innerHTML = table1RowsHtml;
+  }
+
+  // 2. Table 2: Ranking Kanca
+  let rankingSubtitle = `${activeMonths.length} Bulan`;
+  if (activeMonths.length === 10 && activeMonths[0] === 'Januari' && activeMonths[9] === 'Oktober') {
+    rankingSubtitle = 'YTD';
+  } else if (activeMonths.length === 12) {
+    rankingSubtitle = 'Tahunan';
+  } else if (activeMonths.length === 1) {
+    rankingSubtitle = activeMonths[0];
   }
 
   const allBranches = getFilteredUkersForArea(state.chartData.ukerNames).filter(
     (name) => name && !name.toLowerCase().startsWith('total') && name.toLowerCase() !== 'ro'
   );
 
-  const branchRankings = allBranches.map((name) => {
-    const bData = state.chartData.data[name] || [];
-    let bSum25 = 0;
-    let bSum26 = 0;
+  if (selectedYear === '2025') {
+    if (table2Title) table2Title.textContent = `🏆 Ranking Kanca - Top Pencapaian Tahun 2025 (${isSavol ? 'SAVOL' : 'New User'} ${rankingSubtitle})`;
+    if (bottomHead) {
+      bottomHead.innerHTML = `
+        <tr>
+          <th style="width: 60px; text-align: center;">Rank</th>
+          <th style="text-align: left;">Unit Kerja</th>
+          <th style="text-align: right;">Total Pencapaian 2025</th>
+          <th style="text-align: center; width: 110px;">% Kontribusi</th>
+        </tr>
+      `;
+    }
 
-    activeMonths.forEach((m) => {
-      const idx = CC_MONTH_LIST.indexOf(m);
-      bSum25 += bData[idx] || 0;
-      bSum26 += bData[12 + idx] || 0;
+    const branchRankings25 = allBranches.map((name) => {
+      const bData = state.chartData.data[name] || [];
+      let bSum25 = 0;
+      activeMonths.forEach((m) => {
+        const idx = CC_MONTH_LIST.indexOf(m);
+        bSum25 += bData[idx] || 0;
+      });
+      return { name, sum25: bSum25 };
     });
 
-    const bDiff = bSum26 - bSum25;
-    const bPct = bSum25 > 0 ? (bDiff / bSum25 * 100) : 0;
-    return { name, sum25: bSum25, sum26: bSum26, diff: bDiff, pct: bPct };
-  });
+    branchRankings25.sort((a, b) => b.sum25 - a.sum25);
+    const grandSum25 = branchRankings25.reduce((acc, b) => acc + b.sum25, 0);
 
-  // Urutkan cabang dengan pertumbuhan YoY tertinggi di paling atas
-  branchRankings.sort((a, b) => {
-    if (b.pct !== a.pct) return b.pct - a.pct;
-    return b.diff - a.diff;
-  });
+    let table2RowsHtml = '';
+    branchRankings25.forEach((b, idx) => {
+      const rank = idx + 1;
+      let rankBadge = `<span class="rank-badge">${rank}</span>`;
+      if (rank === 1) rankBadge = `<span class="rank-badge rank-1" title="Top 1 Pencapaian 2025">🥇 1</span>`;
+      else if (rank === 2) rankBadge = `<span class="rank-badge rank-2" title="Top 2 Pencapaian 2025">🥈 2</span>`;
+      else if (rank === 3) rankBadge = `<span class="rank-badge rank-3" title="Top 3 Pencapaian 2025">🥉 3</span>`;
+
+      const share = grandSum25 > 0 ? (b.sum25 / grandSum25 * 100) : 0;
+
+      table2RowsHtml += `
+        <tr>
+          <td style="text-align: center;">${rankBadge}</td>
+          <td class="uker-name"><strong>${b.name}</strong></td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; font-weight:600; color:#3b82f6;">${formatVal(b.sum25)}</td>
+          <td style="text-align: center;"><span class="status-badge up">${share.toFixed(2)}%</span></td>
+        </tr>
+      `;
+    });
+
+    bottomBody.innerHTML = table2RowsHtml || '<tr><td colspan="4" class="table-placeholder">Tidak ada cabang untuk diranking.</td></tr>';
+
+  } else if (selectedYear === '2026') {
+    if (table2Title) table2Title.textContent = `🏆 Ranking Kanca - Top YoY Growth Tahun 2026 (${isSavol ? 'SAVOL' : 'New User'} ${rankingSubtitle})`;
+    if (bottomHead) {
+      bottomHead.innerHTML = `
+        <tr>
+          <th style="width: 60px; text-align: center;">Rank</th>
+          <th style="text-align: left;">Unit Kerja</th>
+          <th style="text-align: right;">Total 2026</th>
+          <th style="text-align: right;">Total 2025 (Ref)</th>
+          <th style="text-align: right;">Growth YoY</th>
+          <th style="text-align: center; width: 105px;">% Growth</th>
+        </tr>
+      `;
+    }
+
+    const branchRankings = allBranches.map((name) => {
+      const bData = state.chartData.data[name] || [];
+      let bSum25 = 0;
+      let bSum26 = 0;
+
+      activeMonths.forEach((m) => {
+        const idx = CC_MONTH_LIST.indexOf(m);
+        bSum25 += bData[idx] || 0;
+        bSum26 += bData[12 + idx] || 0;
+      });
+
+      const bDiff = bSum26 - bSum25;
+      const bPct = bSum25 > 0 ? (bDiff / bSum25 * 100) : 0;
+      return { name, sum25: bSum25, sum26: bSum26, diff: bDiff, pct: bPct };
+    });
+
+    branchRankings.sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct;
+      return b.diff - a.diff;
+    });
+
+    let table2RowsHtml = '';
+    branchRankings.forEach((b, idx) => {
+      const rank = idx + 1;
+      let rankBadge = `<span class="rank-badge">${rank}</span>`;
+      if (rank === 1) rankBadge = `<span class="rank-badge rank-1" title="Top 1 Pertumbuhan YoY">🥇 1</span>`;
+      else if (rank === 2) rankBadge = `<span class="rank-badge rank-2" title="Top 2 Pertumbuhan YoY">🥈 2</span>`;
+      else if (rank === 3) rankBadge = `<span class="rank-badge rank-3" title="Top 3 Pertumbuhan YoY">🥉 3</span>`;
+
+      const isUp = b.diff >= 0;
+      const sign = isUp ? '+' : '';
+      const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
+
+      table2RowsHtml += `
+        <tr>
+          <td style="text-align: center;">${rankBadge}</td>
+          <td class="uker-name"><strong>${b.name}</strong></td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; font-weight:600; color:#10b981;">${formatVal(b.sum26)}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color:#94a3b8;">${formatVal(b.sum25)}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(b.diff)}</td>
+          <td style="text-align: center;"><span class="${badgeClass}">${isUp ? '▲' : '▼'} ${sign}${b.pct.toFixed(2)}%</span></td>
+        </tr>
+      `;
+    });
+
+    bottomBody.innerHTML = table2RowsHtml || '<tr><td colspan="6" class="table-placeholder">Tidak ada cabang untuk diranking.</td></tr>';
+
+  } else {
+    // Both 2025 vs 2026
+    if (table2Title) table2Title.textContent = `🏆 Ranking Kanca - Top YoY Growth (${isSavol ? 'SAVOL' : 'New User'} ${rankingSubtitle})`;
+    if (bottomHead) {
+      bottomHead.innerHTML = `
+        <tr>
+          <th style="width: 60px; text-align: center;">Rank</th>
+          <th style="text-align: left;">Unit Kerja</th>
+          <th style="text-align: right;">Total 2025</th>
+          <th style="text-align: right;">Total 2026</th>
+          <th style="text-align: right;">Growth YoY</th>
+          <th style="text-align: center; width: 105px;">% Growth</th>
+        </tr>
+      `;
+    }
+
+    const branchRankings = allBranches.map((name) => {
+      const bData = state.chartData.data[name] || [];
+      let bSum25 = 0;
+      let bSum26 = 0;
+
+      activeMonths.forEach((m) => {
+        const idx = CC_MONTH_LIST.indexOf(m);
+        bSum25 += bData[idx] || 0;
+        bSum26 += bData[12 + idx] || 0;
+      });
+
+      const bDiff = bSum26 - bSum25;
+      const bPct = bSum25 > 0 ? (bDiff / bSum25 * 100) : 0;
+      return { name, sum25: bSum25, sum26: bSum26, diff: bDiff, pct: bPct };
+    });
+
+    branchRankings.sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct;
+      return b.diff - a.diff;
+    });
+
+    let table2RowsHtml = '';
+    branchRankings.forEach((b, idx) => {
+      const rank = idx + 1;
+      let rankBadge = `<span class="rank-badge">${rank}</span>`;
+      if (rank === 1) rankBadge = `<span class="rank-badge rank-1" title="Top 1 Pertumbuhan YoY">🥇 1</span>`;
+      else if (rank === 2) rankBadge = `<span class="rank-badge rank-2" title="Top 2 Pertumbuhan YoY">🥈 2</span>`;
+      else if (rank === 3) rankBadge = `<span class="rank-badge rank-3" title="Top 3 Pertumbuhan YoY">🥉 3</span>`;
+
+      const isUp = b.diff >= 0;
+      const sign = isUp ? '+' : '';
+      const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
+
+      table2RowsHtml += `
+        <tr>
+          <td style="text-align: center;">${rankBadge}</td>
+          <td class="uker-name"><strong>${b.name}</strong></td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(b.sum25)}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(b.sum26)}</strong></td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(b.diff)}</td>
+          <td style="text-align: center;"><span class="${badgeClass}">${isUp ? '▲' : '▼'} ${sign}${b.pct.toFixed(2)}%</span></td>
+        </tr>
+      `;
+    });
+
+    bottomBody.innerHTML = table2RowsHtml || '<tr><td colspan="6" class="table-placeholder">Tidak ada cabang untuk diranking.</td></tr>';
+  }
 
   let table2RowsHtml = '';
   branchRankings.forEach((b, idx) => {
@@ -1577,6 +1881,12 @@ function initEventListeners() {
         syncModeUI();
         loadData();
       }
+    });
+  }
+
+  if (elements.ccYearSelect) {
+    elements.ccYearSelect.addEventListener('change', (e) => {
+      setCcSelectedYear(e.target.value);
     });
   }
 
@@ -1964,6 +2274,12 @@ function populateMonthSelectors() {
     return;
   }
 
+  // Remove CC year pills if switching back to DPK
+  const ccYearPills = document.getElementById('ccYearPills');
+  if (ccYearPills) {
+    ccYearPills.remove();
+  }
+
   // --- DPK Mode ---
   const availableMonths = getAvailableMonths();
   monthChips.innerHTML = '';
@@ -2093,9 +2409,63 @@ function populateCcMonthSelectors(monthChips, monthSelectionHint, monthColorCont
     state.selectedCcMonths = [...CC_MONTH_LIST];
   }
 
+  // 1. Year Filter Pills (Semua, 2026, 2025)
+  let ccYearPills = document.getElementById('ccYearPills');
+  if (!ccYearPills) {
+    ccYearPills = document.createElement('div');
+    ccYearPills.id = 'ccYearPills';
+    ccYearPills.className = 'cc-year-pills';
+    Object.assign(ccYearPills.style, {
+      display: 'flex',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: '0.45rem',
+      marginBottom: '0.55rem',
+    });
+    monthChips.insertAdjacentElement('beforebegin', ccYearPills);
+  }
+
+  const renderYearPills = () => {
+    ccYearPills.replaceChildren();
+
+    const label = document.createElement('span');
+    label.textContent = 'Pilih Tahun:';
+    Object.assign(label.style, {
+      color: 'var(--text-secondary)',
+      fontSize: '0.82rem',
+      fontWeight: '600',
+      marginRight: '0.2rem',
+    });
+    ccYearPills.appendChild(label);
+
+    const yearOptions = [
+      { key: 'all', label: 'Semua (2025 vs 2026)' },
+      { key: '2026', label: 'Tahun 2026 Saja' },
+      { key: '2025', label: 'Tahun 2025 Saja' },
+    ];
+
+    yearOptions.forEach((opt) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const isActive = (state.ccSelectedYear || 'all') === opt.key;
+      btn.className = `month-chip ${isActive ? 'active' : ''}`;
+      btn.textContent = opt.label;
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      btn.addEventListener('click', () => {
+        setCcSelectedYear(opt.key);
+      });
+      ccYearPills.appendChild(btn);
+    });
+  };
+
+  renderYearPills();
+
   const updateHint = () => {
     if (!monthSelectionHint) return;
-    monthSelectionHint.textContent = `${state.selectedCcMonths.length} bulan dipilih`;
+    const yearText = state.ccSelectedYear === '2026'
+      ? ' (Tahun 2026)'
+      : (state.ccSelectedYear === '2025' ? ' (Tahun 2025)' : ' (2025 vs 2026)');
+    monthSelectionHint.textContent = `${state.selectedCcMonths.length} bulan dipilih${yearText}`;
   };
 
   const renderCcColorControls = () => {
@@ -2110,7 +2480,11 @@ function populateCcMonthSelectors(monthChips, monthSelectionHint, monthColorCont
     });
     monthColorControls.appendChild(title);
 
-    ['2025', '2026'].forEach((year) => {
+    const activeYears = (state.ccSelectedYear === '2025' || state.ccSelectedYear === '2026')
+      ? [state.ccSelectedYear]
+      : ['2025', '2026'];
+
+    activeYears.forEach((year) => {
       const colorLabel = document.createElement('label');
       colorLabel.title = `Ubah warna garis Tahun ${year}`;
       Object.assign(colorLabel.style, {
@@ -2162,7 +2536,13 @@ function populateCcMonthSelectors(monthChips, monthSelectionHint, monthColorCont
       cursor: 'pointer',
     });
     resetButton.addEventListener('click', () => {
-      state.ccYearColors = { ...DEFAULT_CC_YEAR_COLORS };
+      if (state.ccSelectedYear === '2025') {
+        state.ccYearColors['2025'] = DEFAULT_CC_YEAR_COLORS['2025'];
+      } else if (state.ccSelectedYear === '2026') {
+        state.ccYearColors['2026'] = DEFAULT_CC_YEAR_COLORS['2026'];
+      } else {
+        state.ccYearColors = { ...DEFAULT_CC_YEAR_COLORS };
+      }
       saveCcYearColors();
       renderCcColorControls();
       updateCcComparisonChart();
