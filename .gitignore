@@ -11,6 +11,10 @@ env/
 venv/
 ENV/
 
+# PHP / Laravel stray files (Not used in this Vercel JS dashboard)
+*.php
+*.blade.php
+
 # SSA / Raw banking data files (Do not push to GitHub)
 *SSA*
 *ssa*
