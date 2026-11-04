@@ -1334,12 +1334,12 @@ function updateCcTables() {
   if (avgHead) {
     avgHead.innerHTML = `
       <tr>
-        <th>Bulan</th>
-        <th>Pencapaian 2025</th>
-        <th>Pencapaian 2026</th>
-        <th>Growth YoY</th>
-        <th>% Growth</th>
-        <th>Status</th>
+        <th style="text-align: left;">Bulan</th>
+        <th style="text-align: right;">Pencapaian 2025</th>
+        <th style="text-align: right;">Pencapaian 2026</th>
+        <th style="text-align: right;">Growth YoY</th>
+        <th style="text-align: center; width: 95px;">% Growth</th>
+        <th style="text-align: center; width: 75px;">Status</th>
       </tr>
     `;
   }
@@ -1373,11 +1373,11 @@ function updateCcTables() {
     table1RowsHtml += `
       <tr>
         <td class="uker-name"><strong>${month}</strong></td>
-        <td>${formatVal(v25)}</td>
-        <td>${formatVal(v26)}</td>
-        <td style="color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(diff)}</td>
-        <td><span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span></td>
-        <td>${statusText}</td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(v25)}</td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(v26)}</td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(diff)}</td>
+        <td style="text-align: center;"><span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span></td>
+        <td style="text-align: center;">${statusText}</td>
       </tr>
     `;
   });
@@ -1390,29 +1390,29 @@ function updateCcTables() {
   table1RowsHtml += `
     <tr style="background: rgba(59, 130, 246, 0.08); font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.15);">
       <td><strong>TOTAL YTD (Jan - Okt)</strong></td>
-      <td><strong>${formatVal(sum2025)}</strong></td>
-      <td><strong>${formatVal(sum2026)}</strong></td>
-      <td style="color:${totalUp ? '#10b981' : '#ef4444'}; font-weight:700;"><strong>${totalSign}${formatVal(totalDiff)}</strong></td>
-      <td><span class="status-badge ${totalUp ? 'up' : 'down'}">${totalUp ? '▲' : '▼'} ${totalSign}${totalPct.toFixed(2)}%</span></td>
-      <td><strong>${totalUp ? 'Naik' : 'Turun'}</strong></td>
+      <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2025)}</strong></td>
+      <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2026)}</strong></td>
+      <td style="text-align: right; font-variant-numeric: tabular-nums; color:${totalUp ? '#10b981' : '#ef4444'}; font-weight:700;"><strong>${totalSign}${formatVal(totalDiff)}</strong></td>
+      <td style="text-align: center;"><span class="status-badge ${totalUp ? 'up' : 'down'}">${totalUp ? '▲' : '▼'} ${totalSign}${totalPct.toFixed(2)}%</span></td>
+      <td style="text-align: center;"><strong>${totalUp ? 'Naik' : 'Turun'}</strong></td>
     </tr>
   `;
 
   avgBody.innerHTML = table1RowsHtml;
 
-  // 2. Table 2: Ranking Kanca (Top Performance)
+  // 2. Table 2: Ranking Kanca (Top Performance berdasarkan Pertumbuhan YoY)
   if (table2Title) {
-    table2Title.textContent = `🏆 Ranking Kanca (${isSavol ? 'SAVOL' : 'New User'} YTD 2026)`;
+    table2Title.textContent = `🏆 Ranking Kanca - Top YoY Growth (${isSavol ? 'SAVOL' : 'New User'} YTD 2026)`;
   }
   if (bottomHead) {
     bottomHead.innerHTML = `
       <tr>
-        <th>Rank</th>
-        <th>Unit Kerja</th>
-        <th>YTD 2025</th>
-        <th>YTD 2026</th>
-        <th>Growth YoY</th>
-        <th>% Growth</th>
+        <th style="width: 60px; text-align: center;">Rank</th>
+        <th style="text-align: left;">Unit Kerja</th>
+        <th style="text-align: right;">YTD 2025</th>
+        <th style="text-align: right;">YTD 2026</th>
+        <th style="text-align: right;">Growth YoY</th>
+        <th style="text-align: center; width: 105px;">% Growth</th>
       </tr>
     `;
   }
@@ -1430,15 +1430,19 @@ function updateCcTables() {
     return { name, sum25: bSum25, sum26: bSum26, diff: bDiff, pct: bPct };
   });
 
-  branchRankings.sort((a, b) => b.sum26 - a.sum26);
+  // Urutkan cabang dengan pertumbuhan YoY tertinggi di paling atas
+  branchRankings.sort((a, b) => {
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    return b.diff - a.diff;
+  });
 
   let table2RowsHtml = '';
   branchRankings.forEach((b, idx) => {
     const rank = idx + 1;
     let rankBadge = `<span class="rank-badge">${rank}</span>`;
-    if (rank === 1) rankBadge = `<span class="rank-badge rank-1">🥇 1</span>`;
-    else if (rank === 2) rankBadge = `<span class="rank-badge rank-2">🥈 2</span>`;
-    else if (rank === 3) rankBadge = `<span class="rank-badge rank-3">🥉 3</span>`;
+    if (rank === 1) rankBadge = `<span class="rank-badge rank-1" title="Top 1 Pertumbuhan YoY">🥇 1</span>`;
+    else if (rank === 2) rankBadge = `<span class="rank-badge rank-2" title="Top 2 Pertumbuhan YoY">🥈 2</span>`;
+    else if (rank === 3) rankBadge = `<span class="rank-badge rank-3" title="Top 3 Pertumbuhan YoY">🥉 3</span>`;
 
     const isUp = b.diff >= 0;
     const sign = isUp ? '+' : '';
@@ -1446,12 +1450,12 @@ function updateCcTables() {
 
     table2RowsHtml += `
       <tr>
-        <td>${rankBadge}</td>
+        <td style="text-align: center;">${rankBadge}</td>
         <td class="uker-name"><strong>${b.name}</strong></td>
-        <td>${formatVal(b.sum25)}</td>
-        <td><strong>${formatVal(b.sum26)}</strong></td>
-        <td style="color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(b.diff)}</td>
-        <td><span class="${badgeClass}">${isUp ? '▲' : '▼'} ${sign}${b.pct.toFixed(2)}%</span></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(b.sum25)}</td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(b.sum26)}</strong></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(b.diff)}</td>
+        <td style="text-align: center;"><span class="${badgeClass}">${isUp ? '▲' : '▼'} ${sign}${b.pct.toFixed(2)}%</span></td>
       </tr>
     `;
   });

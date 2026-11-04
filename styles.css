@@ -1267,7 +1267,8 @@ body::before {
 .compact-table th,
 .compact-table td {
   font-size: 0.78rem;
-  padding: 0.4rem 0.45rem;
+  padding: 0.45rem 0.55rem;
+  vertical-align: middle;
 }
 
 .table-placeholder {
@@ -1818,28 +1819,36 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  gap: 3px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  border-radius: 12px;
   font-weight: 700;
   font-size: 0.75rem;
-  background: rgba(148, 163, 184, 0.2);
-  color: var(--text-primary, #f8fafc);
+  line-height: 1;
+  white-space: nowrap;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-secondary);
 }
 
 .rank-badge.rank-1 {
-  background: linear-gradient(135deg, #fbbf24, #d97706);
-  color: #000;
+  background: rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
 }
 
 .rank-badge.rank-2 {
-  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
-  color: #000;
+  background: rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.45);
 }
 
 .rank-badge.rank-3 {
-  background: linear-gradient(135deg, #f59e0b, #b45309);
-  color: #fff;
+  background: rgba(217, 119, 6, 0.18);
+  color: #fb923c;
+  border: 1px solid rgba(217, 119, 6, 0.45);
 }
 
 
