@@ -11,6 +11,14 @@ env/
 venv/
 ENV/
 
+# SSA / Raw banking data files (Do not push to GitHub)
+*SSA*
+*ssa*
+*Mentah*
+*mentah*
+*Simpanan*
+*simpanan*
+
 # Scratch & temporary utility files
 *_mapping.txt
 scrape_ipot*
