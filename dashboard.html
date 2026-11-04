@@ -73,12 +73,17 @@
         <section class="controls-panel glass-card">
           <div class="controls-header">
             <h2>⚙️ Pengaturan</h2>
-            <div class="mode-switcher-container" role="tablist" aria-label="Mode Dashboard">
-              <button type="button" class="mode-tab-btn active" id="modeDpkBtn" role="tab" aria-selected="true">
-                <span>📊</span> DPK
-              </button>
-              <button type="button" class="mode-tab-btn" id="modeCcBtn" role="tab" aria-selected="false">
-                <span>💳</span> Kartu Kredit (CC)
+            <div class="header-action-group">
+              <div class="mode-switcher-container" role="tablist" aria-label="Mode Dashboard">
+                <button type="button" class="mode-tab-btn active" id="modeDpkBtn" role="tab" aria-selected="true">
+                  <span>📊</span> DPK
+                </button>
+                <button type="button" class="mode-tab-btn" id="modeCcBtn" role="tab" aria-selected="false">
+                  <span>💳</span> Kartu Kredit (CC)
+                </button>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary btn-cc-manual" id="openCcManualModalBtn" style="display: none;" title="Buka form input data manual CC">
+                <span>📝</span> Input Manual CC
               </button>
             </div>
           </div>
@@ -184,6 +189,9 @@
                     <option value="line_yoy">Line Chart (2025 vs 2026)</option>
                     <option value="timeline">Timeline Penuh (2025 - 2026)</option>
                   </select>
+                  <button type="button" class="btn btn-sm btn-outline cc-inline-manual-btn" id="openCcManualModalInlineBtn" title="Input data manual CC">
+                    📝 Input Manual CC
+                  </button>
                 </div>
                 <div class="comparison-date-label-select" id="dateLabelModeGroup">
                   <label for="dateLabelModeSelect">Label Tanggal:</label>
@@ -343,6 +351,102 @@
     </div>
 
     <!-- Error Toast -->
+        <!-- CC Manual Input Modal -->
+    <div id="ccManualModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="ccModalTitle">
+      <div class="modal-container glass-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h3 id="ccModalTitle">💳 Input Data Manual Kartu Kredit (CC)</h3>
+            <p class="modal-subtitle">Perbarui data pencapaian SAVOL & New User per Kantor Cabang dengan auto-sum area & total</p>
+          </div>
+          <button type="button" class="modal-close-btn" id="closeCcManualModalBtn" aria-label="Tutup">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Toolbar: Metrik, Periode, Quick Actions -->
+          <div class="cc-modal-toolbar">
+            <div class="cc-modal-field">
+              <label for="ccModalMetric">Pilih Metrik:</label>
+              <select id="ccModalMetric" class="select-input">
+                <option value="savol" selected>Sales Volume (SAVOL)</option>
+                <option value="new_user">New User CC</option>
+              </select>
+            </div>
+
+            <div class="cc-modal-field">
+              <label for="ccModalDate">Periode / Bulan:</label>
+              <div class="cc-date-selector-row">
+                <select id="ccModalDate" class="select-input">
+                  <!-- Populated dynamically -->
+                </select>
+                <button type="button" class="btn btn-sm btn-secondary" id="ccModalAddDateBtn" title="Tambah bulan baru">
+                  ➕ Tambah Bulan
+                </button>
+              </div>
+            </div>
+
+            <div class="cc-modal-field cc-quick-actions">
+              <label>Aksi Cepat:</label>
+              <div class="cc-actions-btn-group">
+                <button type="button" class="btn btn-sm btn-outline" id="ccModalPasteExcelBtn" title="Paste angka dari Excel">
+                  📋 Tempel dari Excel
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" id="ccModalResetBtn" title="Muat ulang nilai yang tersimpan">
+                  🔄 Muat Ulang
+                </button>
+                <button type="button" class="btn btn-sm btn-outline" id="ccModalClearBtn" title="Set semua nilai jadi 0">
+                  🧹 Kosongkan
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Paste Excel Box (Collapsible) -->
+          <div id="ccPasteBox" class="cc-paste-box" style="display: none;">
+            <div class="cc-paste-box-header">
+              <span>📋 Tempel Angka dari Excel (30 Kanca urut: Area 1, 2, 4, 5):</span>
+              <button type="button" class="btn-text-close" id="ccClosePasteBox">&times;</button>
+            </div>
+            <textarea id="ccPasteTextarea" class="cc-paste-textarea" rows="4" placeholder="Copy 1 kolom atau baris 30 angka dari Excel lalu paste di sini..."></textarea>
+            <div class="cc-paste-box-footer">
+              <span id="ccPasteCountBadge" class="cc-count-badge">0 angka terdeteksi</span>
+              <button type="button" class="btn btn-sm btn-primary" id="ccApplyPasteBtn">Terapkan ke Form</button>
+            </div>
+          </div>
+
+          <!-- Grand Total Summary Card -->
+          <div class="cc-grand-total-card">
+            <div class="cc-total-stat">
+              <span class="cc-stat-label">TOTAL KESELURUHAN (LIVE)</span>
+              <span class="cc-stat-value" id="ccLiveGrandTotal">0</span>
+            </div>
+            <div class="cc-area-badges-strip" id="ccAreaBadgesStrip">
+              <!-- Dynamically rendered Area live totals -->
+            </div>
+          </div>
+
+          <!-- Branches Input Form (Grouped by Area) -->
+          <div class="cc-branches-grid-container" id="ccBranchesGridContainer">
+            <!-- Dynamically populated Area cards with Kanca input fields -->
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button type="button" class="btn btn-outline" id="ccDownloadCsvBtn" title="Unduh file CSV hasil pembaruan langsung ke komputer">
+              📥 Unduh CSV
+            </button>
+          </div>
+          <div class="modal-footer-right">
+            <button type="button" class="btn btn-secondary" id="ccCancelModalBtn">Batal</button>
+            <button type="button" class="btn btn-primary" id="ccSaveBtn">
+              💾 Simpan & Perbarui Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="app.js?v=12"></script>

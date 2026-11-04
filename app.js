@@ -243,6 +243,27 @@ const elements = {
   tableCard2Title: document.getElementById("tableCard2Title"),
   avgEndingTableHead: document.getElementById("avgEndingTableHead"),
   bottomEndingTableHead: document.getElementById("bottomEndingTableHead"),
+  openCcManualModalBtn: document.getElementById("openCcManualModalBtn"),
+  openCcManualModalInlineBtn: document.getElementById("openCcManualModalInlineBtn"),
+  ccManualModal: document.getElementById("ccManualModal"),
+  closeCcManualModalBtn: document.getElementById("closeCcManualModalBtn"),
+  ccCancelModalBtn: document.getElementById("ccCancelModalBtn"),
+  ccModalMetric: document.getElementById("ccModalMetric"),
+  ccModalDate: document.getElementById("ccModalDate"),
+  ccModalAddDateBtn: document.getElementById("ccModalAddDateBtn"),
+  ccModalPasteExcelBtn: document.getElementById("ccModalPasteExcelBtn"),
+  ccClosePasteBox: document.getElementById("ccClosePasteBox"),
+  ccPasteBox: document.getElementById("ccPasteBox"),
+  ccPasteTextarea: document.getElementById("ccPasteTextarea"),
+  ccPasteCountBadge: document.getElementById("ccPasteCountBadge"),
+  ccApplyPasteBtn: document.getElementById("ccApplyPasteBtn"),
+  ccModalResetBtn: document.getElementById("ccModalResetBtn"),
+  ccModalClearBtn: document.getElementById("ccModalClearBtn"),
+  ccLiveGrandTotal: document.getElementById("ccLiveGrandTotal"),
+  ccAreaBadgesStrip: document.getElementById("ccAreaBadgesStrip"),
+  ccBranchesGridContainer: document.getElementById("ccBranchesGridContainer"),
+  ccSaveBtn: document.getElementById("ccSaveBtn"),
+  ccDownloadCsvBtn: document.getElementById("ccDownloadCsvBtn"),
 };
 
 // =====================================
@@ -403,10 +424,21 @@ function generateComparisonTablePhoto() {
  * Fetch and parse CSV file
  */
 async function fetchCSV(category, metric) {
+  if (category === "cc") {
+    const override = localStorage.getItem(`cc_override_${metric}`);
+    if (override) {
+      try {
+        return parseCSV(override);
+      } catch (err) {
+        console.warn("Gagal parse override CC dari localStorage:", err);
+      }
+    }
+  }
+
   const path = CONFIG.csvPaths[category][metric];
 
   try {
-    const response = await fetch(path);
+    const response = await fetch(`${path}?t=${Date.now()}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -689,6 +721,10 @@ function syncModeUI() {
   }
   if (elements.dateLabelModeGroup) {
     elements.dateLabelModeGroup.style.display = isCc ? "none" : "flex";
+  }
+
+  if (elements.openCcManualModalBtn) {
+    elements.openCcManualModalBtn.style.display = isCc ? "inline-flex" : "none";
   }
 
   populateMetricOptions();
@@ -1374,6 +1410,7 @@ function updateCcTables() {
 }
 
 function initEventListeners() {
+  initCcManualModal();
   // Mode switcher tabs (DPK vs CC)
   if (elements.modeDpkBtn) {
     elements.modeDpkBtn.addEventListener('click', () => {
@@ -2389,3 +2426,510 @@ document.addEventListener("DOMContentLoaded", () => {
     themeToggle.addEventListener('click', toggleTheme);
   }
 });
+
+
+// =====================================
+// CC Manual Input Engine
+// =====================================
+
+const CC_AREAS_DEF = [
+  {
+    id: "1",
+    name: "Area 1",
+    totalCol: "TOTAL AREA 1",
+    branches: ["KC Indramayu", "KC Purwakarta", "KC Subang", "KC Jatibarang", "KC Pamanukan"]
+  },
+  {
+    id: "2",
+    name: "Area 2",
+    totalCol: "TOTAL AREA 2",
+    branches: ["KC Majalengka", "KC Sumedang", "KC Cirebon Kartini", "KC Kuningan", "KC Cirebon Gunung Jati", "KC Banjar", "KC Ciamis", "KC Tasikmalaya"]
+  },
+  {
+    id: "3",
+    name: "Area 3",
+    totalCol: "TOTAL AREA 3",
+    branches: []
+  },
+  {
+    id: "4",
+    name: "Area 4",
+    totalCol: "TOTAL AREA 4",
+    branches: ["KC Sukabumi", "KC Cianjur", "KC Majalaya", "KC Cimahi", "KC Cibadak", "KC Soreang", "KC Garut", "KC Singaparna"]
+  },
+  {
+    id: "5",
+    name: "Area 5",
+    totalCol: "TOTAL AREA 5",
+    branches: ["KC Bandung AA", "KC Bandung Dewi Sartika", "KC Bandung Naripan", "KC Bandung A.H. Nasution", "KC Bandung Martadinata", "KC Bandung Kopo", "KC Bandung Dago", "KC Bandung Sukarno Hatta", "KC Bandung Setiabudi"]
+  }
+];
+
+const ALL_CC_KANCAS = CC_AREAS_DEF.flatMap(a => a.branches);
+
+let ccModalRawLines = [];
+let ccModalHeaderCols = [];
+let ccModalCurrentMetric = "savol";
+let ccModalCurrentDate = "";
+
+function cleanCcInputNumber(str) {
+  if (typeof str === 'number') return isNaN(str) ? 0 : str;
+  if (!str) return 0;
+  const cleaned = String(str).replace(/Rp\s?/gi, '').replace(/\./g, '').replace(/,/g, '').trim();
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+}
+
+function formatCcNumber(num, isCurrency = false) {
+  if (num === null || num === undefined || isNaN(num)) return "0";
+  const formatted = Math.round(num).toLocaleString("id-ID");
+  return isCurrency ? `Rp ${formatted}` : formatted;
+}
+
+async function openCcManualModal() {
+  if (!elements.ccManualModal) return;
+  elements.ccManualModal.style.display = "flex";
+  document.body.style.overflow = "hidden";
+
+  const targetMetric = (state.currentCategory === "cc" && state.currentMetric === "new_user") ? "new_user" : "savol";
+  if (elements.ccModalMetric) {
+    elements.ccModalMetric.value = targetMetric;
+  }
+  ccModalCurrentMetric = targetMetric;
+
+  await loadCcModalDataset(targetMetric);
+}
+
+function closeCcManualModal() {
+  if (!elements.ccManualModal) return;
+  elements.ccManualModal.style.display = "none";
+  document.body.style.overflow = "";
+  if (elements.ccPasteBox) elements.ccPasteBox.style.display = "none";
+}
+
+async function loadCcModalDataset(metric, preferredDate = null) {
+  const path = (CONFIG.csvPaths.cc && CONFIG.csvPaths.cc[metric]) || `csv cc/${metric}.csv`;
+
+  try {
+    let csvText = "";
+    const override = localStorage.getItem(`cc_override_${metric}`);
+    if (override) {
+      csvText = override;
+    } else {
+      const resp = await fetch(`${path}?t=${Date.now()}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      csvText = await resp.text();
+    }
+
+    ccModalRawLines = csvText.split("\n").map(l => l.trim()).filter(l => l);
+    if (ccModalRawLines.length < 2) {
+      throw new Error("CSV file kosong");
+    }
+
+    ccModalHeaderCols = ccModalRawLines[0].split(";").map(h => h.trim().replace(/\r/g, ""));
+    const dates = ccModalRawLines.slice(1).map(l => l.split(";")[0].trim().replace(/\r/g, ""));
+
+    if (elements.ccModalDate) {
+      elements.ccModalDate.innerHTML = "";
+      dates.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        elements.ccModalDate.appendChild(opt);
+      });
+
+      if (preferredDate && dates.includes(preferredDate)) {
+        elements.ccModalDate.value = preferredDate;
+      } else {
+        const novDate = dates.find(d => d.toLowerCase().includes("nov-2026"));
+        elements.ccModalDate.value = novDate || dates[dates.length - 1];
+      }
+      ccModalCurrentDate = elements.ccModalDate.value;
+    }
+
+    renderCcModalForm();
+  } catch (err) {
+    console.error("Gagal memuat dataset modal CC:", err);
+    showToast(`Gagal memuat data CC: ${err.message}`, "error");
+  }
+}
+
+function renderCcModalForm() {
+  if (!elements.ccBranchesGridContainer) return;
+  elements.ccBranchesGridContainer.innerHTML = "";
+
+  const selectedDate = elements.ccModalDate ? elements.ccModalDate.value : ccModalCurrentDate;
+  const isCurrency = ccModalCurrentMetric === "savol";
+
+  const rowLine = ccModalRawLines.slice(1).find(l => l.split(";")[0].trim() === selectedDate);
+  const valuesMap = {};
+  if (rowLine) {
+    const cols = rowLine.split(";").map(v => v.trim().replace(/\r/g, ""));
+    for (let i = 1; i < cols.length && i < ccModalHeaderCols.length; i++) {
+      valuesMap[ccModalHeaderCols[i]] = parseEuropeanNumber(cols[i]);
+    }
+  }
+
+  CC_AREAS_DEF.forEach(area => {
+    const areaCard = document.createElement("div");
+    areaCard.className = "cc-area-card";
+
+    const header = document.createElement("div");
+    header.className = "cc-area-card-header";
+    header.innerHTML = `
+      <span class="cc-area-title">${area.name}</span>
+      <span id="ccAreaSumPill_${area.id}" class="cc-area-total-pill">0</span>
+    `;
+    areaCard.appendChild(header);
+
+    const grid = document.createElement("div");
+    grid.className = "cc-branches-inputs-grid";
+
+    if (area.branches.length > 0) {
+      area.branches.forEach(branch => {
+        const val = valuesMap[branch] || 0;
+        const group = document.createElement("div");
+        group.className = "cc-branch-input-group";
+        group.innerHTML = `
+          <label class="cc-branch-label" title="${branch}">${branch}</label>
+          <input type="text" class="cc-branch-input" data-branch="${branch}" data-area="${area.id}" value="${formatCcNumber(val)}" inputmode="numeric" />
+        `;
+        grid.appendChild(group);
+      });
+    } else {
+      const val = valuesMap[area.totalCol] || 0;
+      const group = document.createElement("div");
+      group.className = "cc-branch-input-group";
+      group.innerHTML = `
+        <label class="cc-branch-label" title="${area.totalCol}">${area.totalCol}</label>
+        <input type="text" class="cc-branch-input" data-branch="${area.totalCol}" data-area="${area.id}" value="${formatCcNumber(val)}" inputmode="numeric" />
+      `;
+      grid.appendChild(group);
+    }
+
+    areaCard.appendChild(grid);
+    elements.ccBranchesGridContainer.appendChild(areaCard);
+  });
+
+  // Render RO Card
+  const roCard = document.createElement("div");
+  roCard.className = "cc-area-card";
+  const roVal = valuesMap["RO"] || 0;
+  roCard.innerHTML = `
+    <div class="cc-area-card-header">
+      <span class="cc-area-title">Kantor Wilayah (RO)</span>
+      <span class="cc-area-total-pill" id="ccRoPill">0</span>
+    </div>
+    <div class="cc-branches-inputs-grid">
+      <div class="cc-branch-input-group">
+        <label class="cc-branch-label">RO</label>
+        <input type="text" class="cc-branch-input" data-branch="RO" data-area="RO" value="${formatCcNumber(roVal)}" inputmode="numeric" />
+      </div>
+    </div>
+  `;
+  elements.ccBranchesGridContainer.appendChild(roCard);
+
+  const allInputs = elements.ccBranchesGridContainer.querySelectorAll(".cc-branch-input");
+  allInputs.forEach(input => {
+    input.addEventListener("input", () => {
+      recalcCcModalLiveTotals();
+    });
+
+    input.addEventListener("focus", (e) => {
+      const raw = cleanCcInputNumber(e.target.value);
+      e.target.value = raw === 0 ? "" : raw;
+    });
+
+    input.addEventListener("blur", (e) => {
+      const num = cleanCcInputNumber(e.target.value);
+      e.target.value = formatCcNumber(num);
+      recalcCcModalLiveTotals();
+    });
+  });
+
+  recalcCcModalLiveTotals();
+}
+
+function recalcCcModalLiveTotals() {
+  if (!elements.ccBranchesGridContainer) return;
+
+  const isCurrency = ccModalCurrentMetric === "savol";
+  let grandTotal = 0;
+  const areaTotals = {};
+
+  CC_AREAS_DEF.forEach(area => {
+    let areaSum = 0;
+    const inputs = elements.ccBranchesGridContainer.querySelectorAll(`.cc-branch-input[data-area="${area.id}"]`);
+    inputs.forEach(inp => {
+      areaSum += cleanCcInputNumber(inp.value);
+    });
+
+    areaTotals[area.id] = areaSum;
+    grandTotal += areaSum;
+
+    const pill = document.getElementById(`ccAreaSumPill_${area.id}`);
+    if (pill) {
+      pill.textContent = formatCcNumber(areaSum, isCurrency);
+    }
+  });
+
+  const roInput = elements.ccBranchesGridContainer.querySelector(`.cc-branch-input[data-branch="RO"]`);
+  const roVal = roInput ? cleanCcInputNumber(roInput.value) : 0;
+  grandTotal += roVal;
+  const roPill = document.getElementById("ccRoPill");
+  if (roPill) roPill.textContent = formatCcNumber(roVal, isCurrency);
+
+  if (elements.ccLiveGrandTotal) {
+    elements.ccLiveGrandTotal.textContent = formatCcNumber(grandTotal, isCurrency);
+  }
+
+  if (elements.ccAreaBadgesStrip) {
+    elements.ccAreaBadgesStrip.innerHTML = "";
+    CC_AREAS_DEF.forEach(area => {
+      const item = document.createElement("div");
+      item.className = "cc-area-badge-item";
+      item.innerHTML = `<span class="area-tag">${area.name}:</span> <span class="area-val">${formatCcNumber(areaTotals[area.id] || 0, isCurrency)}</span>`;
+      elements.ccAreaBadgesStrip.appendChild(item);
+    });
+    const roItem = document.createElement("div");
+    roItem.className = "cc-area-badge-item";
+    roItem.innerHTML = `<span class="area-tag">RO:</span> <span class="area-val">${formatCcNumber(roVal, isCurrency)}</span>`;
+    elements.ccAreaBadgesStrip.appendChild(roItem);
+  }
+}
+
+async function saveCcModalData() {
+  const selectedDate = elements.ccModalDate ? elements.ccModalDate.value : ccModalCurrentDate;
+  if (!selectedDate) {
+    showToast("Silakan pilih tanggal/bulan terlebih dahulu", "warning");
+    return;
+  }
+
+  const values = {};
+  const allInputs = elements.ccBranchesGridContainer.querySelectorAll(".cc-branch-input");
+  allInputs.forEach(inp => {
+    const branch = inp.getAttribute("data-branch");
+    values[branch] = cleanCcInputNumber(inp.value);
+  });
+
+  let grandTotal = 0;
+  CC_AREAS_DEF.forEach(area => {
+    let areaSum = 0;
+    if (area.branches.length > 0) {
+      area.branches.forEach(b => {
+        areaSum += values[b] || 0;
+      });
+    } else {
+      areaSum = values[area.totalCol] || 0;
+    }
+    values[area.totalCol] = areaSum;
+    grandTotal += areaSum;
+  });
+
+  const roVal = values["RO"] || 0;
+  grandTotal += roVal;
+  values["TOTAL KESELURUHAN"] = grandTotal;
+
+  const rowCols = [selectedDate];
+  for (let i = 1; i < ccModalHeaderCols.length; i++) {
+    const colName = ccModalHeaderCols[i];
+    rowCols.push(values[colName] !== undefined ? Math.round(values[colName]) : 0);
+  }
+  const newRowStr = rowCols.join(";");
+
+  let foundIdx = -1;
+  for (let i = 1; i < ccModalRawLines.length; i++) {
+    if (ccModalRawLines[i].split(";")[0].trim() === selectedDate) {
+      foundIdx = i;
+      break;
+    }
+  }
+
+  if (foundIdx !== -1) {
+    ccModalRawLines[foundIdx] = newRowStr;
+  } else {
+    ccModalRawLines.push(newRowStr);
+  }
+
+  const updatedCsvText = ccModalRawLines.join("\n");
+
+  let savedToDisk = false;
+  try {
+    const resp = await fetch("save_cc.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        metric: ccModalCurrentMetric,
+        date: selectedDate,
+        values: values
+      })
+    });
+    if (resp.ok) {
+      const resJson = await resp.json();
+      if (resJson.success) {
+        savedToDisk = true;
+      }
+    }
+  } catch (e) {
+    console.warn("save_cc.php request failed or not available:", e);
+  }
+
+  localStorage.setItem(`cc_override_${ccModalCurrentMetric}`, updatedCsvText);
+
+  if (state.currentCategory === "cc" && state.currentMetric === ccModalCurrentMetric) {
+    state.chartData = parseCSV(updatedCsvText);
+    state.lastDataHash = hashData(state.chartData);
+    updateComparisonChart();
+    updateComparisonTable();
+  }
+
+  showToast(
+    savedToDisk
+      ? `✅ Data ${ccModalCurrentMetric.toUpperCase()} bulan ${selectedDate} berhasil disimpan ke disk!`
+      : `✅ Data ${ccModalCurrentMetric.toUpperCase()} berhasil disimpan! (Tersimpan di browser)`,
+    "success"
+  );
+
+  closeCcManualModal();
+}
+
+function downloadCcModalCsv() {
+  const csvContent = ccModalRawLines.join("\r\n") + "\r\n";
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${ccModalCurrentMetric}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast(`File ${ccModalCurrentMetric}.csv berhasil diunduh!`, "info");
+}
+
+function initCcManualModal() {
+  if (elements.openCcManualModalBtn) {
+    elements.openCcManualModalBtn.addEventListener("click", openCcManualModal);
+  }
+  if (elements.openCcManualModalInlineBtn) {
+    elements.openCcManualModalInlineBtn.addEventListener("click", openCcManualModal);
+  }
+  if (elements.closeCcManualModalBtn) {
+    elements.closeCcManualModalBtn.addEventListener("click", closeCcManualModal);
+  }
+  if (elements.ccCancelModalBtn) {
+    elements.ccCancelModalBtn.addEventListener("click", closeCcManualModal);
+  }
+
+  if (elements.ccManualModal) {
+    elements.ccManualModal.addEventListener("click", (e) => {
+      if (e.target === elements.ccManualModal) {
+        closeCcManualModal();
+      }
+    });
+  }
+
+  if (elements.ccModalMetric) {
+    elements.ccModalMetric.addEventListener("change", (e) => {
+      ccModalCurrentMetric = e.target.value;
+      loadCcModalDataset(ccModalCurrentMetric);
+    });
+  }
+
+  if (elements.ccModalDate) {
+    elements.ccModalDate.addEventListener("change", (e) => {
+      ccModalCurrentDate = e.target.value;
+      renderCcModalForm();
+    });
+  }
+
+  if (elements.ccModalAddDateBtn) {
+    elements.ccModalAddDateBtn.addEventListener("click", () => {
+      const newDate = prompt("Masukkan tanggal/bulan baru (contoh: 31-Jan-2027):");
+      if (newDate && newDate.trim()) {
+        const cleanDate = newDate.trim();
+        const exists = Array.from(elements.ccModalDate.options).some(o => o.value.toLowerCase() === cleanDate.toLowerCase());
+        if (!exists) {
+          const opt = document.createElement("option");
+          opt.value = cleanDate;
+          opt.textContent = cleanDate;
+          elements.ccModalDate.appendChild(opt);
+        }
+        elements.ccModalDate.value = cleanDate;
+        ccModalCurrentDate = cleanDate;
+        renderCcModalForm();
+      }
+    });
+  }
+
+  if (elements.ccModalResetBtn) {
+    elements.ccModalResetBtn.addEventListener("click", () => {
+      renderCcModalForm();
+      showToast("Nilai telah dimuat ulang dari data tersimpan", "info");
+    });
+  }
+
+  if (elements.ccModalClearBtn) {
+    elements.ccModalClearBtn.addEventListener("click", () => {
+      const inputs = elements.ccBranchesGridContainer.querySelectorAll(".cc-branch-input");
+      inputs.forEach(inp => inp.value = "0");
+      recalcCcModalLiveTotals();
+      showToast("Seluruh input direset ke 0", "info");
+    });
+  }
+
+  if (elements.ccModalPasteExcelBtn && elements.ccPasteBox) {
+    elements.ccModalPasteExcelBtn.addEventListener("click", () => {
+      const isVisible = elements.ccPasteBox.style.display !== "none";
+      elements.ccPasteBox.style.display = isVisible ? "none" : "flex";
+      if (!isVisible && elements.ccPasteTextarea) {
+        elements.ccPasteTextarea.focus();
+      }
+    });
+  }
+
+  if (elements.ccClosePasteBox && elements.ccPasteBox) {
+    elements.ccClosePasteBox.addEventListener("click", () => {
+      elements.ccPasteBox.style.display = "none";
+    });
+  }
+
+  if (elements.ccPasteTextarea && elements.ccPasteCountBadge) {
+    elements.ccPasteTextarea.addEventListener("input", (e) => {
+      const tokens = e.target.value.trim().split(/[\t\n,;]+/).filter(t => t.trim());
+      elements.ccPasteCountBadge.textContent = `${tokens.length} angka terdeteksi (Dibutuhkan 30 Kanca)`;
+      elements.ccPasteCountBadge.style.color = tokens.length === ALL_CC_KANCAS.length ? "var(--success)" : "var(--text-muted)";
+    });
+  }
+
+  if (elements.ccApplyPasteBtn && elements.ccPasteTextarea) {
+    elements.ccApplyPasteBtn.addEventListener("click", () => {
+      const tokens = elements.ccPasteTextarea.value.trim().split(/[\t\n,;]+/).filter(t => t.trim());
+      if (tokens.length === 0) {
+        showToast("Tidak ada angka yang terdeteksi pada teks paste!", "warning");
+        return;
+      }
+
+      const numbers = tokens.map(cleanCcInputNumber);
+      ALL_CC_KANCAS.forEach((kanca, idx) => {
+        const inp = elements.ccBranchesGridContainer.querySelector(`.cc-branch-input[data-branch="${kanca}"]`);
+        if (inp) {
+          inp.value = formatCcNumber(numbers[idx] !== undefined ? numbers[idx] : 0);
+        }
+      });
+
+      recalcCcModalLiveTotals();
+      elements.ccPasteBox.style.display = "none";
+      elements.ccPasteTextarea.value = "";
+      showToast(`${Math.min(tokens.length, ALL_CC_KANCAS.length)} angka berhasil diterapkan ke 30 Kanca!`, "success");
+    });
+  }
+
+  if (elements.ccSaveBtn) {
+    elements.ccSaveBtn.addEventListener("click", saveCcModalData);
+  }
+
+  if (elements.ccDownloadCsvBtn) {
+    elements.ccDownloadCsvBtn.addEventListener("click", downloadCcModalCsv);
+  }
+}
