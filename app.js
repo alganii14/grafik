@@ -135,7 +135,18 @@ const DEFAULT_MONTH_COLORS = Object.freeze({
   Desember: "#f59e0b",
 });
 
+const CC_MONTH_LIST = Object.freeze([
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+]);
+
+const DEFAULT_CC_YEAR_COLORS = Object.freeze({
+  "2025": "#3b82f6",
+  "2026": "#10b981",
+});
+
 const MONTH_COLOR_STORAGE_KEY = "dpk-chart-month-colors";
+const CC_YEAR_COLOR_STORAGE_KEY = "cc-chart-year-colors";
 
 function loadMonthColors() {
   const colors = { ...DEFAULT_MONTH_COLORS };
@@ -161,6 +172,31 @@ function saveMonthColors() {
     localStorage.setItem(MONTH_COLOR_STORAGE_KEY, JSON.stringify(state.monthColors));
   } catch (error) {
     console.warn("Warna bulan tidak dapat disimpan:", error);
+  }
+}
+
+function loadCcYearColors() {
+  const colors = { ...DEFAULT_CC_YEAR_COLORS };
+  try {
+    const savedColors = JSON.parse(localStorage.getItem(CC_YEAR_COLOR_STORAGE_KEY));
+    if (savedColors && typeof savedColors === "object") {
+      ["2025", "2026"].forEach((year) => {
+        if (/^#[0-9a-f]{6}$/i.test(savedColors[year])) {
+          colors[year] = savedColors[year];
+        }
+      });
+    }
+  } catch (error) {
+    console.warn("Warna CC tersimpan tidak dapat dibaca:", error);
+  }
+  return colors;
+}
+
+function saveCcYearColors() {
+  try {
+    localStorage.setItem(CC_YEAR_COLOR_STORAGE_KEY, JSON.stringify(state.ccYearColors));
+  } catch (error) {
+    console.warn("Warna CC tidak dapat disimpan:", error);
   }
 }
 
@@ -194,7 +230,9 @@ const state = {
   comparisonChart: null,
   selectedComparisonUker: null,
   selectedMonths: [],
+  selectedCcMonths: [...CC_MONTH_LIST],
   monthColors: loadMonthColors(),
+  ccYearColors: loadCcYearColors(),
   dateLabelMode: "range",
   chartTitleVisibility: "hide",
   autoRefreshEnabled: false,
@@ -405,7 +443,8 @@ function generateComparisonTablePhoto() {
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/(^-|-$)/g, '');
-      const monthTag = (state.selectedMonths || []).join('-').toLowerCase() || 'bulan';
+      const activeMonths = state.currentCategory === 'cc' ? state.selectedCcMonths : state.selectedMonths;
+      const monthTag = (activeMonths || []).join('-').toLowerCase() || 'bulan';
       link.download = `tabel-${state.currentCategory}-${state.currentMetric}-${ukerName}-${monthTag}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
@@ -777,6 +816,11 @@ function syncModeUI() {
     elements.openCcManualModalBtn.style.display = isCc ? "inline-flex" : "none";
   }
 
+  const monthSelectorLabel = document.getElementById('monthSelectorLabel') || document.querySelector('.month-chip-group label');
+  if (monthSelectorLabel) {
+    monthSelectorLabel.textContent = isCc ? 'Pilih Bulan (Perbandingan CC):' : 'Pilih Bulan (bisa lebih dari 2):';
+  }
+
   populateMetricOptions();
 }
 
@@ -1108,65 +1152,87 @@ function updateCcComparisonChart() {
     return new Intl.NumberFormat('id-ID').format(Math.round(val)) + ' user';
   };
 
-  const monthLabels = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
+  const activeMonths = CC_MONTH_LIST.filter((m) =>
+    (state.selectedCcMonths && state.selectedCcMonths.length > 0)
+      ? state.selectedCcMonths.includes(m)
+      : true
+  );
 
-  const val2025 = ukerData.slice(0, 12);
-  const val2026 = ukerData.slice(12, 24).map((v, i) => (i < 10 ? v : null));
+  const val2025 = activeMonths.map((m) => {
+    const idx = CC_MONTH_LIST.indexOf(m);
+    const val = ukerData[idx];
+    return (val !== null && val !== undefined) ? val : null;
+  });
+
+  const val2026 = activeMonths.map((m) => {
+    const idx = CC_MONTH_LIST.indexOf(m);
+    const rawVal = ukerData[12 + idx];
+    if (idx < 10) {
+      return (rawVal !== null && rawVal !== undefined) ? rawVal : 0;
+    }
+    return (rawVal !== null && rawVal !== undefined && rawVal > 0) ? rawVal : null;
+  });
 
   let chartType = 'line';
   let labels = [];
   let datasets = [];
 
+  const color2025 = state.ccYearColors?.['2025'] || DEFAULT_CC_YEAR_COLORS['2025'];
+  const color2026 = state.ccYearColors?.['2026'] || DEFAULT_CC_YEAR_COLORS['2026'];
+
   if (ccViewMode === 'timeline') {
     chartType = 'line';
     labels = [
-      'Jan 25', 'Feb 25', 'Mar 25', 'Apr 25', 'Mei 25', 'Jun 25', 'Jul 25', 'Agu 25', 'Sep 25', 'Okt 25', 'Nov 25', 'Des 25',
-      'Jan 26', 'Feb 26', 'Mar 26', 'Apr 26', 'Mei 26', 'Jun 26', 'Jul 26', 'Agu 26', 'Sep 26', 'Okt 26'
+      ...activeMonths.map((m) => m.slice(0, 3) + ' 25'),
+      ...activeMonths.filter((m) => {
+        const idx = CC_MONTH_LIST.indexOf(m);
+        return idx < 10 || (ukerData[12 + idx] > 0);
+      }).map((m) => m.slice(0, 3) + ' 26'),
     ];
-    const timelineValues = [...val2025, ...val2026.slice(0, 10)];
+    const timelineValues = [
+      ...val2025,
+      ...val2026.filter((v) => v !== null),
+    ];
     datasets = [{
       label: `Pencapaian ${isSavol ? 'SAVOL' : 'New User'}`,
       data: timelineValues,
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59, 130, 246, 0.15)',
+      borderColor: color2025,
+      backgroundColor: hexToRgba(color2025, 0.15),
       fill: true,
       tension: 0.35,
       borderWidth: 2.5,
       pointRadius: 5,
       pointHoverRadius: 7,
-      pointBackgroundColor: '#3b82f6',
+      pointBackgroundColor: color2025,
     }];
   } else {
-    // Default: Langsung ke Line Chart YoY (2025 vs 2026)
+    // Default: Line Chart YoY (2025 vs 2026)
     chartType = 'line';
-    labels = monthLabels;
+    labels = activeMonths;
     datasets = [
       {
         label: 'Tahun 2025',
         data: val2025,
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: color2025,
+        backgroundColor: hexToRgba(color2025, 0.1),
         fill: false,
         tension: 0.35,
         borderWidth: 2.5,
         pointRadius: 5,
         pointHoverRadius: 7,
-        pointBackgroundColor: '#3b82f6',
+        pointBackgroundColor: color2025,
       },
       {
         label: 'Tahun 2026',
         data: val2026,
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderColor: color2026,
+        backgroundColor: hexToRgba(color2026, 0.1),
         fill: false,
         tension: 0.35,
         borderWidth: 2.5,
         pointRadius: 5,
         pointHoverRadius: 7,
-        pointBackgroundColor: '#10b981',
+        pointBackgroundColor: color2026,
         spanGaps: false,
       }
     ];
@@ -1324,39 +1390,55 @@ function updateCcTables() {
     `;
   }
 
-  const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober'
-  ];
+  const activeMonths = CC_MONTH_LIST.filter((m) =>
+    (state.selectedCcMonths && state.selectedCcMonths.length > 0)
+      ? state.selectedCcMonths.includes(m)
+      : (CC_MONTH_LIST.indexOf(m) < 10)
+  );
 
   let sum2025 = 0;
   let sum2026 = 0;
 
   let table1RowsHtml = '';
-  monthNames.forEach((month, idx) => {
+  activeMonths.forEach((month) => {
+    const idx = CC_MONTH_LIST.indexOf(month);
     const v25 = ukerData[idx] || 0;
-    const v26 = ukerData[12 + idx] || 0;
-    sum2025 += v25;
-    sum2026 += v26;
+    const v26Raw = ukerData[12 + idx];
+    const hasV26 = (idx < 10) || (v26Raw !== null && v26Raw !== undefined && v26Raw > 0);
+    const v26 = hasV26 ? (v26Raw || 0) : null;
 
-    const diff = v26 - v25;
-    const pct = v25 > 0 ? (diff / v25 * 100) : 0;
-    const isUp = diff >= 0;
-    const sign = isUp ? '+' : '';
+    sum2025 += v25;
+    if (v26 !== null) {
+      sum2026 += v26;
+    }
+
+    let diff = null;
+    let pct = 0;
+    let isUp = true;
+    let sign = '';
+
+    if (v26 !== null) {
+      diff = v26 - v25;
+      pct = v25 > 0 ? (diff / v25 * 100) : 0;
+      isUp = diff >= 0;
+      sign = isUp ? '+' : '';
+    }
 
     const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
     const badgeIcon = isUp ? '▲' : '▼';
-    const statusText = isUp
-      ? '<span style="color:#10b981;font-weight:600;">Naik</span>'
-      : '<span style="color:#ef4444;font-weight:600;">Turun</span>';
+    const statusText = (v26 === null)
+      ? '<span style="color:#94a3b8;">-</span>'
+      : (isUp
+        ? '<span style="color:#10b981;font-weight:600;">Naik</span>'
+        : '<span style="color:#ef4444;font-weight:600;">Turun</span>');
 
     table1RowsHtml += `
       <tr>
         <td class="uker-name"><strong>${month}</strong></td>
         <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(v25)}</td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(v26)}</td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(diff)}</td>
-        <td style="text-align: center;"><span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span></td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums;">${v26 !== null ? formatVal(v26) : '-'}</td>
+        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${v26 !== null ? (isUp ? '#10b981' : '#ef4444') : '#94a3b8'}; font-weight:600;">${v26 !== null ? `${sign}${formatVal(diff)}` : '-'}</td>
+        <td style="text-align: center;">${v26 !== null ? `<span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span>` : '-'}</td>
         <td style="text-align: center;">${statusText}</td>
       </tr>
     `;
@@ -1367,9 +1449,18 @@ function updateCcTables() {
   const totalUp = totalDiff >= 0;
   const totalSign = totalUp ? '+' : '';
 
+  let totalLabel = `TOTAL (${activeMonths.length} Bulan)`;
+  if (activeMonths.length === 10 && activeMonths[0] === 'Januari' && activeMonths[9] === 'Oktober') {
+    totalLabel = 'TOTAL YTD (Jan - Okt)';
+  } else if (activeMonths.length === 12) {
+    totalLabel = 'TOTAL TAHUNAN (Jan - Des)';
+  } else if (activeMonths.length === 1) {
+    totalLabel = `TOTAL (${activeMonths[0]})`;
+  }
+
   table1RowsHtml += `
     <tr style="background: rgba(59, 130, 246, 0.08); font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.15);">
-      <td><strong>TOTAL YTD (Jan - Okt)</strong></td>
+      <td><strong>${totalLabel}</strong></td>
       <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2025)}</strong></td>
       <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(sum2026)}</strong></td>
       <td style="text-align: right; font-variant-numeric: tabular-nums; color:${totalUp ? '#10b981' : '#ef4444'}; font-weight:700;"><strong>${totalSign}${formatVal(totalDiff)}</strong></td>
@@ -1381,16 +1472,25 @@ function updateCcTables() {
   avgBody.innerHTML = table1RowsHtml;
 
   // 2. Table 2: Ranking Kanca (Top Performance berdasarkan Pertumbuhan YoY)
+  let rankingSubtitle = `${activeMonths.length} Bulan`;
+  if (activeMonths.length === 10 && activeMonths[0] === 'Januari' && activeMonths[9] === 'Oktober') {
+    rankingSubtitle = 'YTD 2026';
+  } else if (activeMonths.length === 12) {
+    rankingSubtitle = 'Tahun 2026';
+  } else if (activeMonths.length === 1) {
+    rankingSubtitle = activeMonths[0];
+  }
+
   if (table2Title) {
-    table2Title.textContent = `🏆 Ranking Kanca - Top YoY Growth (${isSavol ? 'SAVOL' : 'New User'} YTD 2026)`;
+    table2Title.textContent = `🏆 Ranking Kanca - Top YoY Growth (${isSavol ? 'SAVOL' : 'New User'} ${rankingSubtitle})`;
   }
   if (bottomHead) {
     bottomHead.innerHTML = `
       <tr>
         <th style="width: 60px; text-align: center;">Rank</th>
         <th style="text-align: left;">Unit Kerja</th>
-        <th style="text-align: right;">YTD 2025</th>
-        <th style="text-align: right;">YTD 2026</th>
+        <th style="text-align: right;">Total 2025</th>
+        <th style="text-align: right;">Total 2026</th>
         <th style="text-align: right;">Growth YoY</th>
         <th style="text-align: center; width: 105px;">% Growth</th>
       </tr>
@@ -1403,8 +1503,15 @@ function updateCcTables() {
 
   const branchRankings = allBranches.map((name) => {
     const bData = state.chartData.data[name] || [];
-    const bSum25 = bData.slice(0, 10).reduce((a, b) => a + b, 0);
-    const bSum26 = bData.slice(12, 22).reduce((a, b) => a + b, 0);
+    let bSum25 = 0;
+    let bSum26 = 0;
+
+    activeMonths.forEach((m) => {
+      const idx = CC_MONTH_LIST.indexOf(m);
+      bSum25 += bData[idx] || 0;
+      bSum26 += bData[12 + idx] || 0;
+    });
+
     const bDiff = bSum26 - bSum25;
     const bPct = bSum25 > 0 ? (bDiff / bSum25 * 100) : 0;
     return { name, sum25: bSum25, sum26: bSum26, diff: bDiff, pct: bPct };
@@ -1831,23 +1938,17 @@ function populateMonthSelectors() {
   
   if (!monthChips) return;
   
-  const availableMonths = getAvailableMonths();
-  
-  monthChips.innerHTML = '';
-  
-  // Default: select up to 4 latest months
-  state.selectedMonths = availableMonths.slice(Math.max(availableMonths.length - 4, 0));
-
-  const updateHint = () => {
-    if (!monthSelectionHint) return;
-    monthSelectionHint.textContent = `${state.selectedMonths.length} bulan dipilih`;
-  };
+  const isCc = state.currentCategory === 'cc';
+  const monthSelectorLabel = document.getElementById('monthSelectorLabel') || document.querySelector('.month-chip-group label');
+  if (monthSelectorLabel) {
+    monthSelectorLabel.textContent = isCc ? 'Pilih Bulan (Perbandingan CC):' : 'Pilih Bulan (bisa lebih dari 2):';
+  }
 
   let monthColorControls = document.getElementById('monthColorControls');
   if (!monthColorControls) {
     monthColorControls = document.createElement('div');
     monthColorControls.id = 'monthColorControls';
-    monthColorControls.setAttribute('aria-label', 'Atur warna grafik per bulan');
+    monthColorControls.setAttribute('aria-label', 'Atur warna grafik');
     Object.assign(monthColorControls.style, {
       display: 'flex',
       flexWrap: 'wrap',
@@ -1857,6 +1958,24 @@ function populateMonthSelectors() {
     });
     monthChips.insertAdjacentElement('afterend', monthColorControls);
   }
+
+  if (isCc) {
+    populateCcMonthSelectors(monthChips, monthSelectionHint, monthColorControls);
+    return;
+  }
+
+  // --- DPK Mode ---
+  const availableMonths = getAvailableMonths();
+  monthChips.innerHTML = '';
+  
+  if (!state.selectedMonths || state.selectedMonths.length === 0) {
+    state.selectedMonths = availableMonths.slice(Math.max(availableMonths.length - 4, 0));
+  }
+
+  const updateHint = () => {
+    if (!monthSelectionHint) return;
+    monthSelectionHint.textContent = `${state.selectedMonths.length} bulan dipilih`;
+  };
 
   const renderColorControls = () => {
     monthColorControls.replaceChildren();
@@ -1941,7 +2060,6 @@ function populateMonthSelectors() {
 
       chip.addEventListener('click', () => {
         if (state.selectedMonths.includes(month)) {
-          // Keep at least one month selected
           if (state.selectedMonths.length === 1) return;
           state.selectedMonths = state.selectedMonths.filter((m) => m !== month);
         } else {
@@ -1965,6 +2083,182 @@ function populateMonthSelectors() {
   }
 
   renderChips();
+}
+
+/**
+ * Populate month selectors specifically for Credit Card (CC)
+ */
+function populateCcMonthSelectors(monthChips, monthSelectionHint, monthColorControls) {
+  if (!state.selectedCcMonths || state.selectedCcMonths.length === 0) {
+    state.selectedCcMonths = [...CC_MONTH_LIST];
+  }
+
+  const updateHint = () => {
+    if (!monthSelectionHint) return;
+    monthSelectionHint.textContent = `${state.selectedCcMonths.length} bulan dipilih`;
+  };
+
+  const renderCcColorControls = () => {
+    monthColorControls.replaceChildren();
+
+    const title = document.createElement('span');
+    title.textContent = 'Warna grafik:';
+    Object.assign(title.style, {
+      color: 'var(--text-secondary)',
+      fontSize: '0.78rem',
+      fontWeight: '600',
+    });
+    monthColorControls.appendChild(title);
+
+    ['2025', '2026'].forEach((year) => {
+      const colorLabel = document.createElement('label');
+      colorLabel.title = `Ubah warna garis Tahun ${year}`;
+      Object.assign(colorLabel.style, {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.35rem',
+        color: 'var(--text-secondary)',
+        fontSize: '0.78rem',
+        cursor: 'pointer',
+      });
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.value = state.ccYearColors[year] || DEFAULT_CC_YEAR_COLORS[year];
+      colorInput.setAttribute('aria-label', `Warna Tahun ${year}`);
+      Object.assign(colorInput.style, {
+        width: '1.75rem',
+        height: '1.75rem',
+        padding: '1px',
+        border: '1px solid var(--border-color)',
+        borderRadius: '0.4rem',
+        background: 'transparent',
+        cursor: 'pointer',
+      });
+
+      colorInput.addEventListener('input', (event) => {
+        state.ccYearColors[year] = event.target.value;
+        saveCcYearColors();
+        updateCcComparisonChart();
+      });
+
+      const yearName = document.createElement('span');
+      yearName.textContent = `Tahun ${year}`;
+      colorLabel.append(colorInput, yearName);
+      monthColorControls.appendChild(colorLabel);
+    });
+
+    const resetButton = document.createElement('button');
+    resetButton.type = 'button';
+    resetButton.textContent = 'Reset warna';
+    resetButton.title = 'Kembalikan warna tahun ke pengaturan awal';
+    Object.assign(resetButton.style, {
+      border: '1px solid var(--border-color)',
+      borderRadius: '0.4rem',
+      padding: '0.3rem 0.55rem',
+      background: 'rgba(148, 163, 184, 0.12)',
+      color: 'var(--text-secondary)',
+      fontSize: '0.75rem',
+      cursor: 'pointer',
+    });
+    resetButton.addEventListener('click', () => {
+      state.ccYearColors = { ...DEFAULT_CC_YEAR_COLORS };
+      saveCcYearColors();
+      renderCcColorControls();
+      updateCcComparisonChart();
+    });
+    monthColorControls.appendChild(resetButton);
+
+    // Separator
+    const sep = document.createElement('span');
+    sep.style.margin = '0 0.25rem';
+    sep.style.color = 'var(--border-color)';
+    sep.textContent = '|';
+    monthColorControls.appendChild(sep);
+
+    // Quick filter: Semua (12 Bulan)
+    const isAllSelected = state.selectedCcMonths.length === 12;
+    const btnAll = document.createElement('button');
+    btnAll.type = 'button';
+    btnAll.textContent = 'Semua (12 Bulan)';
+    btnAll.title = 'Pilih seluruh 12 bulan';
+    Object.assign(btnAll.style, {
+      border: '1px solid var(--border-color)',
+      borderRadius: '0.4rem',
+      padding: '0.3rem 0.55rem',
+      background: isAllSelected ? 'rgba(59, 130, 246, 0.25)' : 'rgba(148, 163, 184, 0.12)',
+      color: isAllSelected ? '#3b82f6' : 'var(--text-secondary)',
+      fontSize: '0.75rem',
+      fontWeight: '600',
+      cursor: 'pointer',
+    });
+    btnAll.addEventListener('click', () => {
+      state.selectedCcMonths = [...CC_MONTH_LIST];
+      renderCcChips();
+      updateCcComparisonChart();
+      updateCcTables();
+    });
+    monthColorControls.appendChild(btnAll);
+
+    // Quick filter: YTD (Jan - Okt)
+    const isYtdSelected = state.selectedCcMonths.length === 10 &&
+      state.selectedCcMonths[0] === 'Januari' &&
+      state.selectedCcMonths[9] === 'Oktober';
+    const btnYtd = document.createElement('button');
+    btnYtd.type = 'button';
+    btnYtd.textContent = 'YTD (Jan - Okt)';
+    btnYtd.title = 'Pilih bulan Januari s/d Oktober';
+    Object.assign(btnYtd.style, {
+      border: '1px solid var(--border-color)',
+      borderRadius: '0.4rem',
+      padding: '0.3rem 0.55rem',
+      background: isYtdSelected ? 'rgba(16, 185, 129, 0.25)' : 'rgba(148, 163, 184, 0.12)',
+      color: isYtdSelected ? '#10b981' : 'var(--text-secondary)',
+      fontSize: '0.75rem',
+      fontWeight: '600',
+      cursor: 'pointer',
+    });
+    btnYtd.addEventListener('click', () => {
+      state.selectedCcMonths = CC_MONTH_LIST.slice(0, 10);
+      renderCcChips();
+      updateCcComparisonChart();
+      updateCcTables();
+    });
+    monthColorControls.appendChild(btnYtd);
+  };
+
+  const renderCcChips = () => {
+    monthChips.innerHTML = '';
+    CC_MONTH_LIST.forEach((month) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      const isActive = state.selectedCcMonths.includes(month);
+      chip.className = `month-chip ${isActive ? 'active' : ''}`;
+      chip.textContent = month;
+      chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+
+      chip.addEventListener('click', () => {
+        if (state.selectedCcMonths.includes(month)) {
+          if (state.selectedCcMonths.length === 1) return;
+          state.selectedCcMonths = state.selectedCcMonths.filter((m) => m !== month);
+        } else {
+          state.selectedCcMonths = CC_MONTH_LIST.filter(
+            (m) => state.selectedCcMonths.includes(m) || m === month
+          );
+        }
+        renderCcChips();
+        updateCcComparisonChart();
+        updateCcTables();
+      });
+
+      monthChips.appendChild(chip);
+    });
+
+    renderCcColorControls();
+    updateHint();
+  };
+
+  renderCcChips();
 }
 
 /**
