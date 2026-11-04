@@ -1,8 +1,7 @@
 import {
   authCookie,
   createAuthToken,
-  expectedCredentials,
-  safeEqual,
+  authenticateUser,
 } from '../lib/auth.js';
 
 export async function POST(request) {
@@ -19,14 +18,14 @@ export async function POST(request) {
     return Response.json({ message: 'Username dan password wajib diisi.' }, { status: 400 });
   }
 
-  const expected = expectedCredentials();
-  if (!safeEqual(username, expected.username) || !safeEqual(password, expected.password)) {
+  const account = authenticateUser(username, password);
+  if (!account) {
     return Response.json({ message: 'Username atau password tidak sesuai.' }, { status: 401 });
   }
 
-  const token = await createAuthToken(username);
+  const token = await createAuthToken(account.username, account.role);
   return Response.json(
-    { ok: true },
+    { ok: true, user: account.username, role: account.role, displayName: account.displayName },
     {
       status: 200,
       headers: {

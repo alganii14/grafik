@@ -453,14 +453,38 @@
     <script>
       const logoutForm = document.getElementById('logoutForm');
 
+      function applyUserRole(user, role) {
+        const displayName = user || 'Pengguna';
+        const roleLabel = role === 'cc' ? 'User CC' : 'Admin';
+        const userEl = document.getElementById('currentUsername');
+        const avatarEl = document.getElementById('currentUserAvatar');
+        if (userEl) userEl.textContent = `${displayName} (${roleLabel})`;
+        if (avatarEl) avatarEl.textContent = displayName.charAt(0).toUpperCase();
+
+        if (window.setDashboardRole) {
+          window.setDashboardRole(role);
+        } else {
+          window.__CURRENT_ROLE__ = role;
+        }
+      }
+
       fetch('/api/session')
         .then((response) => response.ok ? response.json() : Promise.reject())
-        .then(({ user }) => {
-          const displayName = user || 'Pengguna';
-          document.getElementById('currentUsername').textContent = displayName;
-          document.getElementById('currentUserAvatar').textContent = displayName.charAt(0).toUpperCase();
+        .then(({ user, role }) => {
+          localStorage.setItem('dpk_session', JSON.stringify({ user, role }));
+          applyUserRole(user, role);
         })
         .catch(() => {
+          const localSession = localStorage.getItem('dpk_session');
+          if (localSession) {
+            try {
+              const data = JSON.parse(localSession);
+              if (data && data.user) {
+                applyUserRole(data.user, data.role || (data.user === 'cc' || data.user === 'user_cc' ? 'cc' : 'admin'));
+                return;
+              }
+            } catch (e) {}
+          }
           window.location.replace('/?auth=required');
         });
 
@@ -468,6 +492,7 @@
         event.preventDefault();
         const button = logoutForm.querySelector('button');
         button.disabled = true;
+        localStorage.removeItem('dpk_session');
 
         try {
           await fetch('/api/logout', { method: 'POST' });

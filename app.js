@@ -181,6 +181,7 @@ function getMonthColor(month) {
 // State Management
 // =====================================
 const state = {
+  userRole: "admin", // 'admin' | 'cc'
   currentCategory: "konsol",
   currentMetric: "dpk",
   currentArea: "all",
@@ -700,7 +701,56 @@ function updateChartTitle() {
   }
 }
 
+function applyRoleRestrictions(role) {
+  state.userRole = role === 'cc' ? 'cc' : 'admin';
+  const isCcUser = state.userRole === 'cc';
+
+  if (isCcUser) {
+    state.currentCategory = 'cc';
+    if (state.currentMetric !== 'new_user') state.currentMetric = 'savol';
+
+    if (elements.modeDpkBtn) elements.modeDpkBtn.style.display = 'none';
+    if (elements.modeCcBtn) {
+      elements.modeCcBtn.classList.add('active');
+      elements.modeCcBtn.setAttribute('aria-selected', 'true');
+      elements.modeCcBtn.title = 'Akses Khusus: Kartu Kredit (CC)';
+    }
+
+    if (elements.categorySelect) {
+      elements.categorySelect.innerHTML = '<option value="cc" selected>Kartu Kredit (CC)</option>';
+      elements.categorySelect.disabled = true;
+    }
+
+    syncModeUI();
+    loadData();
+  } else {
+    if (elements.modeDpkBtn) elements.modeDpkBtn.style.display = '';
+    if (elements.categorySelect) {
+      elements.categorySelect.disabled = false;
+      const currentCat = state.currentCategory || 'konsol';
+      elements.categorySelect.innerHTML = `
+        <option value="kcp">KCP</option>
+        <option value="konsol" ${currentCat === 'konsol' ? 'selected' : ''}>Konsol</option>
+        <option value="mikro" ${currentCat === 'mikro' ? 'selected' : ''}>Mikro</option>
+        <option value="ritel" ${currentCat === 'ritel' ? 'selected' : ''}>Ritel</option>
+        <option value="average" ${currentCat === 'average' ? 'selected' : ''}>Average</option>
+        <option value="cc" ${currentCat === 'cc' ? 'selected' : ''}>Kartu Kredit (CC)</option>
+      `;
+    }
+    syncModeUI();
+  }
+}
+
+window.setDashboardRole = applyRoleRestrictions;
+
 function syncModeUI() {
+  if (state.userRole === 'cc') {
+    state.currentCategory = 'cc';
+    if (elements.modeDpkBtn) elements.modeDpkBtn.style.display = 'none';
+  } else {
+    if (elements.modeDpkBtn) elements.modeDpkBtn.style.display = '';
+  }
+
   const isCc = state.currentCategory === "cc";
   if (elements.modeCcBtn && elements.modeDpkBtn) {
     if (isCc) {
@@ -1414,6 +1464,7 @@ function initEventListeners() {
   // Mode switcher tabs (DPK vs CC)
   if (elements.modeDpkBtn) {
     elements.modeDpkBtn.addEventListener('click', () => {
+      if (state.userRole === 'cc') return; // User CC dilarang akses DPK
       if (state.currentCategory === 'cc') {
         elements.categorySelect.value = 'konsol';
         state.currentCategory = 'konsol';
@@ -1449,6 +1500,11 @@ function initEventListeners() {
 
   // Category change
   elements.categorySelect.addEventListener("change", (e) => {
+    if (state.userRole === 'cc') {
+      state.currentCategory = 'cc';
+      elements.categorySelect.value = 'cc';
+      return;
+    }
     state.currentCategory = e.target.value;
     state.selectedUkers.clear();
     state.lastDataHash = null;
@@ -2280,10 +2336,26 @@ function updateComparisonTable() {
 // =====================================
 
 async function init() {
-  syncModeUI();
-  console.log("DPK Chart Viewer initializing...");
-
   initEventListeners();
+
+  let detectedRole = window.__CURRENT_ROLE__ || 'admin';
+  const storedSession = localStorage.getItem('dpk_session');
+  if (storedSession) {
+    try {
+      const sess = JSON.parse(storedSession);
+      if (sess && sess.role) detectedRole = sess.role;
+    } catch (e) {}
+  }
+
+  if (detectedRole === 'cc') {
+    applyRoleRestrictions('cc');
+    console.log("CC Chart Viewer initialized for User CC.");
+    return;
+  }
+
+  applyRoleRestrictions('admin');
+  syncModeUI();
+  console.log("DPK Chart Viewer initializing for Admin...");
 
   // Load initial data
   await loadData();

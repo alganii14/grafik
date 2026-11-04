@@ -10,7 +10,7 @@ export async function GET(request) {
   }
 
   return Response.json(
-    { user: session.user },
+    { user: session.user, role: session.role || 'admin' },
     { status: 200, headers: { 'Cache-Control': 'no-store' } },
   );
 }
