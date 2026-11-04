@@ -185,7 +185,7 @@ const state = {
   currentCategory: "konsol",
   currentMetric: "dpk",
   currentArea: "all",
-  ccViewMode: "bar_yoy",
+  ccViewMode: "line_yoy",
   selectedUkers: new Set(),
   allUkers: [],
   filteredUkers: [],
@@ -1090,7 +1090,7 @@ function updateCcComparisonChart() {
   if (!ukerData || ukerData.length < 24) return;
 
   const isSavol = state.currentMetric === 'savol';
-  const ccViewMode = elements.ccViewModeSelect ? elements.ccViewModeSelect.value : (state.ccViewMode || 'bar_yoy');
+  const ccViewMode = elements.ccViewModeSelect ? elements.ccViewModeSelect.value : (state.ccViewMode || 'line_yoy');
 
   const formatCcCompact = (val) => {
     if (val === null || val === undefined || isNaN(val)) return '-';
@@ -1116,7 +1116,7 @@ function updateCcComparisonChart() {
   const val2025 = ukerData.slice(0, 12);
   const val2026 = ukerData.slice(12, 24).map((v, i) => (i < 10 ? v : null));
 
-  let chartType = 'bar';
+  let chartType = 'line';
   let labels = [];
   let datasets = [];
 
@@ -1139,7 +1139,8 @@ function updateCcComparisonChart() {
       pointHoverRadius: 7,
       pointBackgroundColor: '#3b82f6',
     }];
-  } else if (ccViewMode === 'line_yoy') {
+  } else {
+    // Default: Langsung ke Line Chart YoY (2025 vs 2026)
     chartType = 'line';
     labels = monthLabels;
     datasets = [
@@ -1167,27 +1168,6 @@ function updateCcComparisonChart() {
         pointHoverRadius: 7,
         pointBackgroundColor: '#10b981',
         spanGaps: false,
-      }
-    ];
-  } else {
-    chartType = 'bar';
-    labels = monthLabels;
-    datasets = [
-      {
-        label: 'Tahun 2025',
-        data: val2025,
-        backgroundColor: 'rgba(59, 130, 246, 0.75)',
-        borderColor: '#3b82f6',
-        borderWidth: 1.5,
-        borderRadius: 6,
-      },
-      {
-        label: 'Tahun 2026',
-        data: val2026,
-        backgroundColor: 'rgba(16, 185, 129, 0.85)',
-        borderColor: '#10b981',
-        borderWidth: 1.5,
-        borderRadius: 6,
       }
     ];
   }
