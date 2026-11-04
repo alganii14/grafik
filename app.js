@@ -53,6 +53,10 @@ const CONFIG = {
       giro: "csv average/giro.csv",
       tabungan: "csv average/tabungan.csv",
     },
+    cc: {
+      savol: "csv cc/savol.csv",
+      new_user: "csv cc/new_user.csv",
+    },
   },
   chartColors: [
     "#3b82f6",
@@ -177,9 +181,10 @@ function getMonthColor(month) {
 // State Management
 // =====================================
 const state = {
-  currentCategory: "kcp",
+  currentCategory: "konsol",
   currentMetric: "dpk",
   currentArea: "all",
+  ccViewMode: "bar_yoy",
   selectedUkers: new Set(),
   allUkers: [],
   filteredUkers: [],
@@ -228,6 +233,16 @@ const elements = {
   generateTablePhotoBtn: document.getElementById("generateTablePhotoBtn"),
   loadingOverlay: document.getElementById("loadingOverlay"),
   toastContainer: document.getElementById("toastContainer"),
+  modeDpkBtn: document.getElementById("modeDpkBtn"),
+  modeCcBtn: document.getElementById("modeCcBtn"),
+  ccViewModeGroup: document.getElementById("ccViewModeGroup"),
+  ccViewModeSelect: document.getElementById("ccViewModeSelect"),
+  dateLabelModeGroup: document.getElementById("dateLabelModeGroup"),
+  chartTitleVisibilityGroup: document.getElementById("chartTitleVisibilityGroup"),
+  tableCard1Title: document.getElementById("tableCard1Title"),
+  tableCard2Title: document.getElementById("tableCard2Title"),
+  avgEndingTableHead: document.getElementById("avgEndingTableHead"),
+  bottomEndingTableHead: document.getElementById("bottomEndingTableHead"),
 };
 
 // =====================================
@@ -493,6 +508,9 @@ function getFilteredUkersForArea(ukerNames) {
 
   const areaUkers = CONFIG.areaMapping[state.currentArea];
   return cleaned.filter((uker) => {
+    if (state.currentCategory === 'cc' && uker.toLowerCase() === `total area ${state.currentArea}`.toLowerCase()) {
+      return true;
+    }
     return areaUkers.some(
       (areaUker) =>
         uker.toLowerCase().includes(
@@ -628,6 +646,9 @@ function updateChartTitle() {
     konsol: "Konsol",
     mikro: "Mikro",
     ritel: "Ritel",
+    "kanca only": "Kanca Only",
+    average: "Average",
+    cc: "Kartu Kredit (CC)",
   };
 
   const metricNames = {
@@ -636,10 +657,69 @@ function updateChartTitle() {
     depo: "Deposito",
     giro: "Giro",
     tabungan: "Tabungan",
+    savol: "Sales Volume (SAVOL)",
+    new_user: "New User CC",
   };
 
   if (elements.chartTitle) {
-    elements.chartTitle.textContent = `📈 Grafik ${metricNames[state.currentMetric]} - ${categoryNames[state.currentCategory]}`;
+    const mName = metricNames[state.currentMetric] || state.currentMetric;
+    const cName = categoryNames[state.currentCategory] || state.currentCategory;
+    elements.chartTitle.textContent = `📈 Grafik ${mName} - ${cName}`;
+  }
+}
+
+function syncModeUI() {
+  const isCc = state.currentCategory === "cc";
+  if (elements.modeCcBtn && elements.modeDpkBtn) {
+    if (isCc) {
+      elements.modeCcBtn.classList.add("active");
+      elements.modeCcBtn.setAttribute("aria-selected", "true");
+      elements.modeDpkBtn.classList.remove("active");
+      elements.modeDpkBtn.setAttribute("aria-selected", "false");
+    } else {
+      elements.modeDpkBtn.classList.add("active");
+      elements.modeDpkBtn.setAttribute("aria-selected", "true");
+      elements.modeCcBtn.classList.remove("active");
+      elements.modeCcBtn.setAttribute("aria-selected", "false");
+    }
+  }
+
+  if (elements.ccViewModeGroup) {
+    elements.ccViewModeGroup.style.display = isCc ? "flex" : "none";
+  }
+  if (elements.dateLabelModeGroup) {
+    elements.dateLabelModeGroup.style.display = isCc ? "none" : "flex";
+  }
+
+  populateMetricOptions();
+}
+
+function populateMetricOptions() {
+  if (!elements.metricSelect) return;
+  const isCc = state.currentCategory === "cc";
+  const currentVal = state.currentMetric;
+
+  if (isCc) {
+    elements.metricSelect.innerHTML = `
+      <option value="savol" ${currentVal === "savol" ? "selected" : ""}>Sales Volume (SAVOL)</option>
+      <option value="new_user" ${currentVal === "new_user" ? "selected" : ""}>New User</option>
+    `;
+    if (currentVal !== "savol" && currentVal !== "new_user") {
+      state.currentMetric = "savol";
+      elements.metricSelect.value = "savol";
+    }
+  } else {
+    elements.metricSelect.innerHTML = `
+      <option value="dpk" ${currentVal === "dpk" ? "selected" : ""}>DPK</option>
+      <option value="casa" ${currentVal === "casa" ? "selected" : ""}>CASA</option>
+      <option value="depo" ${currentVal === "depo" ? "selected" : ""}>Deposito</option>
+      <option value="giro" ${currentVal === "giro" ? "selected" : ""}>Giro</option>
+      <option value="tabungan" ${currentVal === "tabungan" ? "selected" : ""}>Tabungan</option>
+    `;
+    if (["savol", "new_user"].includes(currentVal)) {
+      state.currentMetric = "dpk";
+      elements.metricSelect.value = "dpk";
+    }
   }
 }
 
@@ -910,12 +990,432 @@ function stopAutoRefresh() {
 // Event Listeners
 // =====================================
 
+
+// =====================================
+// Kartu Kredit (CC) Chart & Table Engine
+// =====================================
+
+function updateCcComparisonChart() {
+  const canvas = document.getElementById('comparisonChart');
+  if (!canvas || !state.chartData) return;
+
+  const uker = state.selectedComparisonUker || 'TOTAL KESELURUHAN';
+  const ukerData = state.chartData.data[uker] || state.chartData.data['TOTAL KESELURUHAN'] || [];
+  if (!ukerData || ukerData.length < 24) return;
+
+  const isSavol = state.currentMetric === 'savol';
+  const ccViewMode = elements.ccViewModeSelect ? elements.ccViewModeSelect.value : (state.ccViewMode || 'bar_yoy');
+
+  const formatCcCompact = (val) => {
+    if (val === null || val === undefined || isNaN(val)) return '-';
+    if (!isSavol) return formatNumber(val);
+    const abs = Math.abs(val);
+    if (abs >= 1e12) return (val / 1e12).toFixed(2).replace('.', ',') + ' T';
+    if (abs >= 1e9) return (val / 1e9).toFixed(2).replace('.', ',') + ' M';
+    if (abs >= 1e6) return (val / 1e6).toFixed(2).replace('.', ',') + ' Jt';
+    return formatNumber(val);
+  };
+
+  const formatCcFull = (val) => {
+    if (val === null || val === undefined || isNaN(val)) return '-';
+    if (isSavol) return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(val));
+    return new Intl.NumberFormat('id-ID').format(Math.round(val)) + ' user';
+  };
+
+  const monthLabels = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  const val2025 = ukerData.slice(0, 12);
+  const val2026 = ukerData.slice(12, 24).map((v, i) => (i < 10 ? v : null));
+
+  let chartType = 'bar';
+  let labels = [];
+  let datasets = [];
+
+  if (ccViewMode === 'timeline') {
+    chartType = 'line';
+    labels = [
+      'Jan 25', 'Feb 25', 'Mar 25', 'Apr 25', 'Mei 25', 'Jun 25', 'Jul 25', 'Agu 25', 'Sep 25', 'Okt 25', 'Nov 25', 'Des 25',
+      'Jan 26', 'Feb 26', 'Mar 26', 'Apr 26', 'Mei 26', 'Jun 26', 'Jul 26', 'Agu 26', 'Sep 26', 'Okt 26'
+    ];
+    const timelineValues = [...val2025, ...val2026.slice(0, 10)];
+    datasets = [{
+      label: `Pencapaian ${isSavol ? 'SAVOL' : 'New User'}`,
+      data: timelineValues,
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59, 130, 246, 0.15)',
+      fill: true,
+      tension: 0.35,
+      borderWidth: 2.5,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: '#3b82f6',
+    }];
+  } else if (ccViewMode === 'line_yoy') {
+    chartType = 'line';
+    labels = monthLabels;
+    datasets = [
+      {
+        label: 'Tahun 2025',
+        data: val2025,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        fill: false,
+        tension: 0.35,
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: '#3b82f6',
+      },
+      {
+        label: 'Tahun 2026',
+        data: val2026,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        fill: false,
+        tension: 0.35,
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: '#10b981',
+        spanGaps: false,
+      }
+    ];
+  } else {
+    chartType = 'bar';
+    labels = monthLabels;
+    datasets = [
+      {
+        label: 'Tahun 2025',
+        data: val2025,
+        backgroundColor: 'rgba(59, 130, 246, 0.75)',
+        borderColor: '#3b82f6',
+        borderWidth: 1.5,
+        borderRadius: 6,
+      },
+      {
+        label: 'Tahun 2026',
+        data: val2026,
+        backgroundColor: 'rgba(16, 185, 129, 0.85)',
+        borderColor: '#10b981',
+        borderWidth: 1.5,
+        borderRadius: 6,
+      }
+    ];
+  }
+
+  const chartTitle = `Pencapaian ${isSavol ? 'Sales Volume (SAVOL)' : 'New User CC'} - ${uker}`;
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: {
+      padding: { top: 25, right: 15, bottom: 10, left: 10 }
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    plugins: {
+      title: {
+        display: state.chartTitleVisibility === 'show',
+        text: chartTitle,
+        color: '#f8fafc',
+        font: { size: 14, weight: '600' },
+        padding: { top: 6, bottom: 12 }
+      },
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          color: '#94a3b8',
+          font: { size: 12, weight: '500' },
+          usePointStyle: true,
+          padding: 15,
+        }
+      },
+      datalabels: {
+        display: (ctx) => {
+          const val = ctx.dataset.data[ctx.dataIndex];
+          return val !== null && val !== undefined && val !== 0;
+        },
+        anchor: 'end',
+        align: 'top',
+        offset: 4,
+        color: '#cbd5e1',
+        font: { size: 10, weight: '600' },
+        formatter: (val) => formatCcCompact(val),
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#f8fafc',
+        bodyColor: '#cbd5e1',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          label: (context) => {
+            const raw = context.raw;
+            if (raw === null || raw === undefined) return null;
+            return ` ${context.dataset.label}: ${formatCcFull(raw)}`;
+          },
+          afterBody: (items) => {
+            if (ccViewMode !== 'timeline' && items.length >= 2) {
+              const v25 = items[0].raw;
+              const v26 = items[1].raw;
+              if (v25 && v26) {
+                const diff = v26 - v25;
+                const pct = (diff / v25 * 100).toFixed(2);
+                const sign = diff >= 0 ? '+' : '';
+                return [
+                  '------------------------------',
+                  ` YoY Growth: ${sign}${formatCcFull(diff)} (${sign}${pct}%)`
+                ];
+              }
+            }
+            return [];
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        ticks: { color: '#94a3b8', font: { size: 11 } }
+      },
+      y: {
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        ticks: {
+          color: '#94a3b8',
+          font: { size: 11 },
+          callback: (value) => formatCcCompact(value),
+        }
+      }
+    }
+  };
+
+  const bgPlugin = {
+    id: 'customCanvasBackgroundColor',
+    beforeDraw: (chart) => {
+      const { ctx: c, width, height } = chart;
+      c.save();
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, width, height);
+      c.restore();
+    }
+  };
+
+  if (state.comparisonChart) {
+    state.comparisonChart.destroy();
+  }
+
+  const ctx = canvas.getContext('2d');
+  state.comparisonChart = new Chart(ctx, {
+    type: chartType,
+    data: { labels, datasets },
+    options: options,
+    plugins: [bgPlugin]
+  });
+}
+
+function updateCcTables() {
+  const avgBody = document.getElementById('avgEndingTableBody');
+  const bottomBody = document.getElementById('bottomEndingTableBody');
+  const table1Title = document.getElementById('tableCard1Title');
+  const table2Title = document.getElementById('tableCard2Title');
+  const avgHead = document.getElementById('avgEndingTableHead');
+  const bottomHead = document.getElementById('bottomEndingTableHead');
+
+  if (!avgBody || !bottomBody || !state.chartData) return;
+
+  const isSavol = state.currentMetric === 'savol';
+  const uker = state.selectedComparisonUker || 'TOTAL KESELURUHAN';
+  const ukerData = state.chartData.data[uker] || state.chartData.data['TOTAL KESELURUHAN'] || [];
+
+  const formatVal = (v) => {
+    if (v === null || v === undefined || isNaN(v)) return '-';
+    if (isSavol) return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(v));
+    return new Intl.NumberFormat('id-ID').format(Math.round(v));
+  };
+
+  // 1. Table 1: Rekap Bulanan 2025 vs 2026
+  if (table1Title) {
+    table1Title.textContent = `📊 Rekap Bulanan 2025 vs 2026 (${uker})`;
+  }
+  if (avgHead) {
+    avgHead.innerHTML = `
+      <tr>
+        <th>Bulan</th>
+        <th>Pencapaian 2025</th>
+        <th>Pencapaian 2026</th>
+        <th>Growth YoY</th>
+        <th>% Growth</th>
+        <th>Status</th>
+      </tr>
+    `;
+  }
+
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober'
+  ];
+
+  let sum2025 = 0;
+  let sum2026 = 0;
+
+  let table1RowsHtml = '';
+  monthNames.forEach((month, idx) => {
+    const v25 = ukerData[idx] || 0;
+    const v26 = ukerData[12 + idx] || 0;
+    sum2025 += v25;
+    sum2026 += v26;
+
+    const diff = v26 - v25;
+    const pct = v25 > 0 ? (diff / v25 * 100) : 0;
+    const isUp = diff >= 0;
+    const sign = isUp ? '+' : '';
+
+    const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
+    const badgeIcon = isUp ? '▲' : '▼';
+    const statusText = isUp
+      ? '<span style="color:#10b981;font-weight:600;">Naik</span>'
+      : '<span style="color:#ef4444;font-weight:600;">Turun</span>';
+
+    table1RowsHtml += `
+      <tr>
+        <td class="uker-name"><strong>${month}</strong></td>
+        <td>${formatVal(v25)}</td>
+        <td>${formatVal(v26)}</td>
+        <td style="color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(diff)}</td>
+        <td><span class="${badgeClass}">${badgeIcon} ${sign}${pct.toFixed(2)}%</span></td>
+        <td>${statusText}</td>
+      </tr>
+    `;
+  });
+
+  const totalDiff = sum2026 - sum2025;
+  const totalPct = sum2025 > 0 ? (totalDiff / sum2025 * 100) : 0;
+  const totalUp = totalDiff >= 0;
+  const totalSign = totalUp ? '+' : '';
+
+  table1RowsHtml += `
+    <tr style="background: rgba(59, 130, 246, 0.08); font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.15);">
+      <td><strong>TOTAL YTD (Jan - Okt)</strong></td>
+      <td><strong>${formatVal(sum2025)}</strong></td>
+      <td><strong>${formatVal(sum2026)}</strong></td>
+      <td style="color:${totalUp ? '#10b981' : '#ef4444'}; font-weight:700;"><strong>${totalSign}${formatVal(totalDiff)}</strong></td>
+      <td><span class="status-badge ${totalUp ? 'up' : 'down'}">${totalUp ? '▲' : '▼'} ${totalSign}${totalPct.toFixed(2)}%</span></td>
+      <td><strong>${totalUp ? 'Naik' : 'Turun'}</strong></td>
+    </tr>
+  `;
+
+  avgBody.innerHTML = table1RowsHtml;
+
+  // 2. Table 2: Ranking Kanca (Top Performance)
+  if (table2Title) {
+    table2Title.textContent = `🏆 Ranking Kanca (${isSavol ? 'SAVOL' : 'New User'} YTD 2026)`;
+  }
+  if (bottomHead) {
+    bottomHead.innerHTML = `
+      <tr>
+        <th>Rank</th>
+        <th>Unit Kerja</th>
+        <th>YTD 2025</th>
+        <th>YTD 2026</th>
+        <th>Growth YoY</th>
+        <th>% Growth</th>
+      </tr>
+    `;
+  }
+
+  const allBranches = getFilteredUkersForArea(state.chartData.ukerNames).filter(
+    (name) => name && !name.toLowerCase().startsWith('total') && name.toLowerCase() !== 'ro'
+  );
+
+  const branchRankings = allBranches.map((name) => {
+    const bData = state.chartData.data[name] || [];
+    const bSum25 = bData.slice(0, 10).reduce((a, b) => a + b, 0);
+    const bSum26 = bData.slice(12, 22).reduce((a, b) => a + b, 0);
+    const bDiff = bSum26 - bSum25;
+    const bPct = bSum25 > 0 ? (bDiff / bSum25 * 100) : 0;
+    return { name, sum25: bSum25, sum26: bSum26, diff: bDiff, pct: bPct };
+  });
+
+  branchRankings.sort((a, b) => b.sum26 - a.sum26);
+
+  let table2RowsHtml = '';
+  branchRankings.forEach((b, idx) => {
+    const rank = idx + 1;
+    let rankBadge = `<span class="rank-badge">${rank}</span>`;
+    if (rank === 1) rankBadge = `<span class="rank-badge rank-1">🥇 1</span>`;
+    else if (rank === 2) rankBadge = `<span class="rank-badge rank-2">🥈 2</span>`;
+    else if (rank === 3) rankBadge = `<span class="rank-badge rank-3">🥉 3</span>`;
+
+    const isUp = b.diff >= 0;
+    const sign = isUp ? '+' : '';
+    const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
+
+    table2RowsHtml += `
+      <tr>
+        <td>${rankBadge}</td>
+        <td class="uker-name"><strong>${b.name}</strong></td>
+        <td>${formatVal(b.sum25)}</td>
+        <td><strong>${formatVal(b.sum26)}</strong></td>
+        <td style="color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(b.diff)}</td>
+        <td><span class="${badgeClass}">${isUp ? '▲' : '▼'} ${sign}${b.pct.toFixed(2)}%</span></td>
+      </tr>
+    `;
+  });
+
+  bottomBody.innerHTML = table2RowsHtml || '<tr><td colspan="6" class="table-placeholder">Tidak ada cabang untuk diranking.</td></tr>';
+}
+
 function initEventListeners() {
+  // Mode switcher tabs (DPK vs CC)
+  if (elements.modeDpkBtn) {
+    elements.modeDpkBtn.addEventListener('click', () => {
+      if (state.currentCategory === 'cc') {
+        elements.categorySelect.value = 'konsol';
+        state.currentCategory = 'konsol';
+        state.selectedUkers.clear();
+        state.lastDataHash = null;
+        syncModeUI();
+        loadData();
+      }
+    });
+  }
+
+  if (elements.modeCcBtn) {
+    elements.modeCcBtn.addEventListener('click', () => {
+      if (state.currentCategory !== 'cc') {
+        elements.categorySelect.value = 'cc';
+        state.currentCategory = 'cc';
+        state.selectedUkers.clear();
+        state.lastDataHash = null;
+        syncModeUI();
+        loadData();
+      }
+    });
+  }
+
+  if (elements.ccViewModeSelect) {
+    elements.ccViewModeSelect.addEventListener('change', (e) => {
+      state.ccViewMode = e.target.value;
+      if (state.currentCategory === 'cc') {
+        updateComparisonChart();
+      }
+    });
+  }
+
   // Category change
   elements.categorySelect.addEventListener("change", (e) => {
     state.currentCategory = e.target.value;
     state.selectedUkers.clear();
     state.lastDataHash = null;
+    syncModeUI();
     loadData();
   });
 
@@ -1181,37 +1681,67 @@ function populateComparisonUkerSelect() {
   if (!select || !state.chartData) return;
   
   select.innerHTML = '';
-  
-  // Filter by area if selected
-  const filteredUkers = getFilteredUkersForArea(state.chartData.ukerNames);
+  const isCc = state.currentCategory === 'cc';
 
-  const allOption = document.createElement('option');
-  allOption.value = ALL_BRANCHES_VALUE;
-  allOption.textContent = 'Semua Cabang (Gabungan)';
-  select.appendChild(allOption);
-  
-  filteredUkers.forEach(uker => {
-    if (!uker) return;
-    const option = document.createElement('option');
-    option.value = uker;
-    option.textContent = uker;
-    select.appendChild(option);
-  });
-  
-  // Set first filtered uker as selected
-  if (filteredUkers.length > 0) {
-    state.selectedComparisonUker = ALL_BRANCHES_VALUE;
-    select.value = ALL_BRANCHES_VALUE;
+  if (isCc) {
+    const allNames = state.chartData.ukerNames.filter((u) => u);
+    let eligibleUkers = [];
+
+    if (state.currentArea === 'all') {
+      const totals = ['TOTAL KESELURUHAN', 'RO', 'TOTAL AREA 1', 'TOTAL AREA 2', 'TOTAL AREA 3', 'TOTAL AREA 4', 'TOTAL AREA 5'];
+      const branches = allNames.filter((n) => !totals.includes(n));
+      eligibleUkers = [...totals.filter((t) => allNames.includes(t)), ...branches];
+    } else {
+      const areaTotalName = `TOTAL AREA ${state.currentArea}`;
+      const areaBranches = getFilteredUkersForArea(allNames).filter(
+        (n) => !n.toLowerCase().startsWith('total') && n.toLowerCase() !== 'ro'
+      );
+      eligibleUkers = [areaTotalName, ...areaBranches];
+    }
+
+    eligibleUkers.forEach((uker) => {
+      const option = document.createElement('option');
+      option.value = uker;
+      option.textContent = uker;
+      select.appendChild(option);
+    });
+
+    if (!state.selectedComparisonUker || !eligibleUkers.includes(state.selectedComparisonUker)) {
+      state.selectedComparisonUker = eligibleUkers[0] || 'TOTAL KESELURUHAN';
+    }
+    select.value = state.selectedComparisonUker;
   } else {
-    state.selectedComparisonUker = null;
+    const filteredUkers = getFilteredUkersForArea(state.chartData.ukerNames);
+
+    const allOption = document.createElement('option');
+    allOption.value = ALL_BRANCHES_VALUE;
+    allOption.textContent = 'Semua Cabang (Gabungan)';
+    select.appendChild(allOption);
+    
+    filteredUkers.forEach(uker => {
+      if (!uker) return;
+      const option = document.createElement('option');
+      option.value = uker;
+      option.textContent = uker;
+      select.appendChild(option);
+    });
+    
+    if (filteredUkers.length > 0) {
+      if (!state.selectedComparisonUker || (state.selectedComparisonUker !== ALL_BRANCHES_VALUE && !filteredUkers.includes(state.selectedComparisonUker))) {
+        state.selectedComparisonUker = ALL_BRANCHES_VALUE;
+      }
+      select.value = state.selectedComparisonUker;
+    } else {
+      state.selectedComparisonUker = null;
+    }
   }
   
-  // Remove old event listener and add new one
   const newSelect = select.cloneNode(true);
   select.parentNode.replaceChild(newSelect, select);
   newSelect.addEventListener('change', (e) => {
     state.selectedComparisonUker = e.target.value;
     updateComparisonChart();
+    updateComparisonTable();
   });
 }
 
@@ -1364,6 +1894,10 @@ function populateMonthSelectors() {
  * Update comparison chart with selected months
  */
 function updateComparisonChart() {
+  if (state.currentCategory === 'cc') {
+    updateCcComparisonChart();
+    return;
+  }
   const canvas = document.getElementById('comparisonChart');
   if (!canvas) return;
   
@@ -1588,6 +2122,39 @@ function updateComparisonChart() {
  * Update comparison table
  */
 function updateComparisonTable() {
+  if (state.currentCategory === 'cc') {
+    updateCcTables();
+    return;
+  }
+  
+  // Restore DPK Table Titles and Heads if switching back from CC
+  if (elements.tableCard1Title) elements.tableCard1Title.textContent = 'Average Balance vs Ending Balance';
+  if (elements.tableCard2Title) elements.tableCard2Title.textContent = 'Bottom vs Ending Balance';
+  if (elements.avgEndingTableHead) {
+    elements.avgEndingTableHead.innerHTML = `
+      <tr>
+        <th>Bulan</th>
+        <th>Ending Balance</th>
+        <th>Avg Bln</th>
+        <th>Avg/Ending</th>
+        <th>MTD</th>
+        <th>YTD</th>
+      </tr>
+    `;
+  }
+  if (elements.bottomEndingTableHead) {
+    elements.bottomEndingTableHead.innerHTML = `
+      <tr>
+        <th>Bulan</th>
+        <th>Ending Balance</th>
+        <th>Bottom</th>
+        <th>Bottom/Ending</th>
+        <th>MTD</th>
+        <th>YTD</th>
+      </tr>
+    `;
+  }
+
   const avgBody = document.getElementById('avgEndingTableBody');
   const bottomBody = document.getElementById('bottomEndingTableBody');
   if (!avgBody || !bottomBody) return;
@@ -1676,6 +2243,7 @@ function updateComparisonTable() {
 // =====================================
 
 async function init() {
+  syncModeUI();
   console.log("DPK Chart Viewer initializing...");
 
   initEventListeners();

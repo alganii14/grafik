@@ -73,6 +73,14 @@
         <section class="controls-panel glass-card">
           <div class="controls-header">
             <h2>⚙️ Pengaturan</h2>
+            <div class="mode-switcher-container" role="tablist" aria-label="Mode Dashboard">
+              <button type="button" class="mode-tab-btn active" id="modeDpkBtn" role="tab" aria-selected="true">
+                <span>📊</span> DPK
+              </button>
+              <button type="button" class="mode-tab-btn" id="modeCcBtn" role="tab" aria-selected="false">
+                <span>💳</span> Kartu Kredit (CC)
+              </button>
+            </div>
           </div>
           <div class="controls-grid">
             <!-- Category Selector -->
@@ -80,16 +88,17 @@
               <label for="categorySelect">Kategori</label>
               <select id="categorySelect" class="select-input">
                 <option value="kcp">KCP</option>
-                <option value="konsol">Konsol</option>
+                <option value="konsol" selected>Konsol</option>
                 <option value="mikro">Mikro</option>
                 <option value="ritel">Ritel</option>
                 <option value="average">Average</option>
+                <option value="cc">Kartu Kredit (CC)</option>
               </select>
             </div>
 
             <!-- Metric Selector -->
             <div class="control-group">
-              <label for="metricSelect">Metrik</label>
+              <label for="metricSelect" id="metricSelectLabel">Metrik</label>
               <select id="metricSelect" class="select-input">
                 <option value="dpk">DPK</option>
                 <option value="casa">CASA</option>
@@ -168,14 +177,22 @@
                     <!-- Will be populated dynamically -->
                   </select>
                 </div>
-                <div class="comparison-date-label-select">
+                <div class="comparison-date-label-select" id="ccViewModeGroup" style="display: none;">
+                  <label for="ccViewModeSelect">Tampilan CC:</label>
+                  <select id="ccViewModeSelect" class="select-input">
+                    <option value="bar_yoy" selected>Bar Chart (2025 vs 2026)</option>
+                    <option value="line_yoy">Line Chart (2025 vs 2026)</option>
+                    <option value="timeline">Timeline Penuh (2025 - 2026)</option>
+                  </select>
+                </div>
+                <div class="comparison-date-label-select" id="dateLabelModeGroup">
                   <label for="dateLabelModeSelect">Label Tanggal:</label>
                   <select id="dateLabelModeSelect" class="select-input">
                     <option value="range" selected>Awal & Akhir saja</option>
                     <option value="all">Semua tanggal</option>
                   </select>
                 </div>
-                <div class="comparison-date-label-select">
+                <div class="comparison-date-label-select" id="chartTitleVisibilityGroup">
                   <label for="chartTitleVisibilitySelect">Judul Chart:</label>
                   <select id="chartTitleVisibilitySelect" class="select-input">
                     <option value="hide" selected>Hide</option>
@@ -191,10 +208,10 @@
 
           <div class="comparison-metrics-grid">
             <div class="comparison-metrics-card">
-              <h4>Average Balance vs Ending Balance</h4>
+              <h4 id="tableCard1Title">Average Balance vs Ending Balance</h4>
               <div class="comparison-table-container">
                 <table class="comparison-table compact-table" id="avgEndingTable">
-                  <thead>
+                  <thead id="avgEndingTableHead">
                     <tr>
                       <th>Bulan</th>
                       <th>Ending Balance</th>
@@ -214,10 +231,10 @@
             </div>
 
             <div class="comparison-metrics-card">
-              <h4>Bottom vs Ending Balance</h4>
+              <h4 id="tableCard2Title">Bottom vs Ending Balance</h4>
               <div class="comparison-table-container">
                 <table class="comparison-table compact-table" id="bottomEndingTable">
-                  <thead>
+                  <thead id="bottomEndingTableHead">
                     <tr>
                       <th>Bulan</th>
                       <th>Ending Balance</th>
