@@ -1826,32 +1826,6 @@ function updateCcTables() {
 
     bottomBody.innerHTML = table2RowsHtml || '<tr><td colspan="6" class="table-placeholder">Tidak ada cabang untuk diranking.</td></tr>';
   }
-
-  let table2RowsHtml = '';
-  branchRankings.forEach((b, idx) => {
-    const rank = idx + 1;
-    let rankBadge = `<span class="rank-badge">${rank}</span>`;
-    if (rank === 1) rankBadge = `<span class="rank-badge rank-1" title="Top 1 Pertumbuhan YoY">🥇 1</span>`;
-    else if (rank === 2) rankBadge = `<span class="rank-badge rank-2" title="Top 2 Pertumbuhan YoY">🥈 2</span>`;
-    else if (rank === 3) rankBadge = `<span class="rank-badge rank-3" title="Top 3 Pertumbuhan YoY">🥉 3</span>`;
-
-    const isUp = b.diff >= 0;
-    const sign = isUp ? '+' : '';
-    const badgeClass = isUp ? 'status-badge up' : 'status-badge down';
-
-    table2RowsHtml += `
-      <tr>
-        <td style="text-align: center;">${rankBadge}</td>
-        <td class="uker-name"><strong>${b.name}</strong></td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums;">${formatVal(b.sum25)}</td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums;"><strong>${formatVal(b.sum26)}</strong></td>
-        <td style="text-align: right; font-variant-numeric: tabular-nums; color:${isUp ? '#10b981' : '#ef4444'}; font-weight:600;">${sign}${formatVal(b.diff)}</td>
-        <td style="text-align: center;"><span class="${badgeClass}">${isUp ? '▲' : '▼'} ${sign}${b.pct.toFixed(2)}%</span></td>
-      </tr>
-    `;
-  });
-
-  bottomBody.innerHTML = table2RowsHtml || '<tr><td colspan="6" class="table-placeholder">Tidak ada cabang untuk diranking.</td></tr>';
 }
 
 function initEventListeners() {
