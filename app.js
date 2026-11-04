@@ -1044,12 +1044,12 @@ function updateCcComparisonChart() {
 
   const formatCcCompact = (val) => {
     if (val === null || val === undefined || isNaN(val)) return '-';
-    if (!isSavol) return formatNumber(val);
+    if (!isSavol) return formatNumber(val, 0);
     const abs = Math.abs(val);
     if (abs >= 1e12) return (val / 1e12).toFixed(2).replace('.', ',') + ' T';
     if (abs >= 1e9) return (val / 1e9).toFixed(2).replace('.', ',') + ' M';
     if (abs >= 1e6) return (val / 1e6).toFixed(2).replace('.', ',') + ' Jt';
-    return formatNumber(val);
+    return formatNumber(val, 0);
   };
 
   const formatCcFull = (val) => {
