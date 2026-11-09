@@ -9,10 +9,11 @@
       content="Dashboard visualisasi grafik DPK dengan update real-time"
     />
 
-    <!-- Chart.js -->
+    <!-- Chart.js & SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,7 +23,7 @@
       rel="stylesheet"
     />
 
-    <link rel="stylesheet" href="styles.css?v=15" />
+    <link rel="stylesheet" href="styles.css?v=16" />
     <link rel="stylesheet" href="auth-dashboard.css?v=1" />
   </head>
   <body>
@@ -82,9 +83,16 @@
                   <span>💳</span> Kartu Kredit (CC)
                 </button>
               </div>
-              <button type="button" class="btn btn-sm btn-primary btn-cc-manual" id="openCcManualModalBtn" style="display: none;" title="Buka form input data manual CC">
-                <span>📝</span> Input Manual CC
+              <button type="button" class="btn btn-sm btn-primary btn-cc-upload" id="uploadCcExcelTopBtn" style="display: none;" title="Upload file Excel CC (otomatis baca sheet SAVOL & NEW USER)">
+                <span>📤</span> Upload Excel CC
               </button>
+              <button type="button" class="btn btn-sm btn-secondary btn-cc-sync" id="syncCcLocalTopBtn" style="display: none;" title="Tarik otomatis dari C:\Dashboard CC\DASHBOARD CC FINAL (1).xlsx">
+                <span>⚡</span> Sync File Lokal
+              </button>
+              <button type="button" class="btn btn-sm btn-outline btn-cc-manual" id="openCcManualModalBtn" style="display: none;" title="Buka form kelola & input data CC">
+                <span>📝</span> Input / Kelola CC
+              </button>
+              <input type="file" id="ccExcelFileInput" accept=".xlsx,.xlsm,.xls" style="display: none;" />
             </div>
           </div>
           <div class="controls-grid">
@@ -196,8 +204,11 @@
                     <option value="line_yoy" selected>Line Chart (2025 vs 2026)</option>
                     <option value="timeline">Timeline Penuh (2025 - 2026)</option>
                   </select>
-                  <button type="button" class="btn btn-sm btn-outline cc-inline-manual-btn" id="openCcManualModalInlineBtn" title="Input data manual CC">
-                    📝 Input Manual CC
+                  <button type="button" class="btn btn-sm btn-primary cc-inline-upload-btn" id="uploadCcExcelInlineBtn" title="Upload file Excel CC (khusus sheet SAVOL & NEW USER)">
+                    📤 Upload Excel CC
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline cc-inline-manual-btn" id="openCcManualModalInlineBtn" title="Kelola / Input data manual CC">
+                    📝 Kelola Data CC
                   </button>
                 </div>
                 <div class="comparison-date-label-select" id="dateLabelModeGroup">
@@ -358,18 +369,36 @@
     </div>
 
     <!-- Error Toast -->
-        <!-- CC Manual Input Modal -->
+    <!-- CC Manual & Excel Upload Modal -->
     <div id="ccManualModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="ccModalTitle">
       <div class="modal-container glass-card">
         <div class="modal-header">
           <div class="modal-title-group">
-            <h3 id="ccModalTitle">💳 Input Data Manual Kartu Kredit (CC)</h3>
-            <p class="modal-subtitle">Perbarui data pencapaian SAVOL & New User per Kantor Cabang dengan auto-sum area & total</p>
+            <h3 id="ccModalTitle">💳 Update Data Kartu Kredit (Upload Excel / Input Manual)</h3>
+            <p class="modal-subtitle">Upload langsung file Excel (otomatis membaca sheet <strong>SAVOL</strong> & <strong>NEW USER</strong>) atau perbarui nilai per Kantor Cabang</p>
           </div>
           <button type="button" class="modal-close-btn" id="closeCcManualModalBtn" aria-label="Tutup">&times;</button>
         </div>
 
         <div class="modal-body">
+          <!-- Direct Excel Upload & Local Sync Banner -->
+          <div class="cc-excel-upload-banner">
+            <div class="cc-excel-upload-left">
+              <div class="cc-excel-badge-title">📊 Update Otomatis dari Excel (Khusus Sheet <code>SAVOL</code> & <code>NEW USER</code>)</div>
+              <p class="cc-excel-desc">Pilih/tarik file <strong>DASHBOARD CC FINAL (1).xlsx</strong> untuk langsung memperbarui seluruh periode pada <code>savol.csv</code> dan <code>new_user.csv</code> sekaligus.</p>
+              <div id="ccExcelUploadStatus" class="cc-excel-status" style="display: none;"></div>
+            </div>
+            <div class="cc-excel-upload-actions">
+              <label for="ccExcelModalInput" class="btn btn-primary cc-upload-label-btn" id="ccExcelDropzone" title="Klik atau tarik file Excel (.xlsx) ke sini">
+                <span>📤 Pilih / Drop File Excel (.xlsx)</span>
+              </label>
+              <input type="file" id="ccExcelModalInput" accept=".xlsx,.xlsm,.xls" style="display: none;" />
+              <button type="button" class="btn btn-secondary btn-sm" id="ccModalSyncLocalBtn" title="Ekspor langsung dari C:\Dashboard CC\DASHBOARD CC FINAL (1).xlsx">
+                ⚡ Sync dari <code>C:\Dashboard CC\DASHBOARD CC FINAL (1)</code>
+              </button>
+            </div>
+          </div>
+
           <!-- Toolbar: Metrik, Periode, Quick Actions -->
           <div class="cc-modal-toolbar">
             <div class="cc-modal-field">
@@ -456,7 +485,7 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=13"></script>
     <script>
       const logoutForm = document.getElementById('logoutForm');
 

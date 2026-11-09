@@ -287,6 +287,14 @@ const elements = {
   bottomEndingTableHead: document.getElementById("bottomEndingTableHead"),
   openCcManualModalBtn: document.getElementById("openCcManualModalBtn"),
   openCcManualModalInlineBtn: document.getElementById("openCcManualModalInlineBtn"),
+  uploadCcExcelTopBtn: document.getElementById("uploadCcExcelTopBtn"),
+  syncCcLocalTopBtn: document.getElementById("syncCcLocalTopBtn"),
+  uploadCcExcelInlineBtn: document.getElementById("uploadCcExcelInlineBtn"),
+  ccExcelFileInput: document.getElementById("ccExcelFileInput"),
+  ccExcelModalInput: document.getElementById("ccExcelModalInput"),
+  ccExcelDropzone: document.getElementById("ccExcelDropzone"),
+  ccModalSyncLocalBtn: document.getElementById("ccModalSyncLocalBtn"),
+  ccExcelUploadStatus: document.getElementById("ccExcelUploadStatus"),
   ccManualModal: document.getElementById("ccManualModal"),
   closeCcManualModalBtn: document.getElementById("closeCcManualModalBtn"),
   ccCancelModalBtn: document.getElementById("ccCancelModalBtn"),
@@ -468,8 +476,9 @@ function generateComparisonTablePhoto() {
  */
 async function fetchCSV(category, metric) {
   if (category === "cc") {
+    const isLocalOnly = localStorage.getItem(`cc_override_mode_${metric}`) === "local_only";
     const override = localStorage.getItem(`cc_override_${metric}`);
-    if (override) {
+    if (isLocalOnly && override) {
       try {
         return parseCSV(override);
       } catch (err) {
@@ -830,6 +839,12 @@ function syncModeUI() {
 
   if (elements.openCcManualModalBtn) {
     elements.openCcManualModalBtn.style.display = isCc ? "inline-flex" : "none";
+  }
+  if (elements.uploadCcExcelTopBtn) {
+    elements.uploadCcExcelTopBtn.style.display = isCc ? "inline-flex" : "none";
+  }
+  if (elements.syncCcLocalTopBtn) {
+    elements.syncCcLocalTopBtn.style.display = isCc ? "inline-flex" : "none";
   }
 
   const monthSelectorLabel = document.getElementById('monthSelectorLabel') || document.querySelector('.month-chip-group label');
@@ -3216,8 +3231,9 @@ async function loadCcModalDataset(metric, preferredDate = null) {
 
   try {
     let csvText = "";
+    const isLocalOnly = localStorage.getItem(`cc_override_mode_${metric}`) === "local_only";
     const override = localStorage.getItem(`cc_override_${metric}`);
-    if (override) {
+    if (isLocalOnly && override) {
       csvText = override;
     } else {
       const resp = await fetch(`${path}?t=${Date.now()}`);
@@ -3478,7 +3494,13 @@ async function saveCcModalData() {
     console.warn("save_cc.php request failed or not available:", e);
   }
 
-  localStorage.setItem(`cc_override_${ccModalCurrentMetric}`, updatedCsvText);
+  if (savedToDisk) {
+    localStorage.removeItem(`cc_override_${ccModalCurrentMetric}`);
+    localStorage.removeItem(`cc_override_mode_${ccModalCurrentMetric}`);
+  } else {
+    localStorage.setItem(`cc_override_${ccModalCurrentMetric}`, updatedCsvText);
+    localStorage.setItem(`cc_override_mode_${ccModalCurrentMetric}`, "local_only");
+  }
 
   if (state.currentCategory === "cc" && state.currentMetric === ccModalCurrentMetric) {
     state.chartData = parseCSV(updatedCsvText);
@@ -3495,6 +3517,260 @@ async function saveCcModalData() {
   );
 
   closeCcManualModal();
+}
+
+function formatExcelDateLabelClient(rawVal) {
+  if (rawVal === null || rawVal === undefined || rawVal === "") return "";
+  const monthsEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  if (typeof rawVal === "number" && rawVal > 30000 && rawVal < 70000) {
+    const unixMs = Math.round((rawVal - 25569) * 86400 * 1000);
+    const dt = new Date(unixMs);
+    const d = String(dt.getUTCDate()).padStart(2, "0");
+    const m = dt.getUTCMonth();
+    const y = dt.getUTCFullYear();
+    return `${d}-${monthsEn[m]}-${y}`;
+  }
+
+  if (rawVal instanceof Date && !isNaN(rawVal.getTime())) {
+    const d = String(rawVal.getDate()).padStart(2, "0");
+    const m = rawVal.getMonth();
+    const y = rawVal.getFullYear();
+    return `${d}-${monthsEn[m]}-${y}`;
+  }
+
+  const str = String(rawVal).trim();
+  if (/^\d+(\.\d+)?$/.test(str)) {
+    const num = parseFloat(str);
+    if (num > 30000 && num < 70000) {
+      const unixMs = Math.round((num - 25569) * 86400 * 1000);
+      const dt = new Date(unixMs);
+      const d = String(dt.getUTCDate()).padStart(2, "0");
+      const m = dt.getUTCMonth();
+      const y = dt.getUTCFullYear();
+      return `${d}-${monthsEn[m]}-${y}`;
+    }
+  }
+
+  const dtPart = str.slice(0, 10);
+  const parts = dtPart.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    const y = parts[0];
+    const m = parseInt(parts[1], 10);
+    const d = parts[2];
+    if (m >= 1 && m <= 12) {
+      return `${d}-${monthsEn[m - 1]}-${y}`;
+    }
+  }
+
+  return str;
+}
+
+function normalizeCcUkerClient(rawName) {
+  const clean = String(rawName || "").trim().replace(/\s+/g, " ");
+  for (const k of ALL_CC_KANCAS) {
+    if (k.toLowerCase() === clean.toLowerCase()) {
+      return k;
+    }
+  }
+  return clean;
+}
+
+async function parseCcExcelClientSide(file) {
+  if (typeof XLSX === "undefined") {
+    throw new Error("Library pembaca Excel (SheetJS) belum termuat");
+  }
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type: "array" });
+
+  const sheetMap = {};
+  wb.SheetNames.forEach(name => {
+    sheetMap[name.trim().toUpperCase()] = name;
+  });
+
+  const targets = [
+    { key: "SAVOL", metric: "savol" },
+    { key: "NEW USER", metric: "new_user" }
+  ];
+
+  const csvData = {};
+  const details = {};
+
+  for (const t of targets) {
+    const actualSheetName = sheetMap[t.key];
+    if (!actualSheetName) {
+      throw new Error(`Sheet "${t.key}" tidak ditemukan di file Excel (${file.name})`);
+    }
+    const ws = wb.Sheets[actualSheetName];
+    const colIndices = [];
+    for (let c = 8; c <= 31; c++) colIndices.push(c); // Kolom I (index 8) s/d AF (index 31)
+
+    // 1. Tanggal dari baris 5 (index 4)
+    const dateLabels = colIndices.map(cIdx => {
+      const cellAddr = XLSX.utils.encode_cell({ r: 4, c: cIdx });
+      const cell = ws[cellAddr];
+      return cell ? formatExcelDateLabelClient(cell.v !== undefined ? cell.v : cell.w) : "";
+    });
+
+    // 2. Unit kerja dari baris 7 s/d 48 (index 6 s/d 47), kolom F (index 5)
+    const ukerList = [];
+    const ukerData = {};
+    for (let r = 6; r <= 47; r++) {
+      const ukerCell = ws[XLSX.utils.encode_cell({ r, c: 5 })];
+      const rawUker = ukerCell ? String(ukerCell.v ?? ukerCell.w ?? "").trim() : "";
+      if (!rawUker) continue;
+
+      const ukerName = normalizeCcUkerClient(rawUker);
+      ukerList.push(ukerName);
+
+      const rowVals = colIndices.map(cIdx => {
+        const valCell = ws[XLSX.utils.encode_cell({ r, c: cIdx })];
+        if (!valCell || valCell.v === undefined || valCell.v === null || valCell.v === "") return 0;
+        const num = Number(valCell.v);
+        if (isNaN(num)) return 0;
+        return Math.abs(num - Math.round(num)) < 0.00001 ? Math.round(num) : num;
+      });
+      ukerData[ukerName] = rowVals;
+    }
+
+    const lines = [];
+    lines.push(["UKER", ...ukerList].join(";"));
+    dateLabels.forEach((dLbl, idx) => {
+      if (!dLbl) return;
+      const row = [dLbl];
+      ukerList.forEach(u => {
+        row.push(String(ukerData[u][idx] ?? 0));
+      });
+      lines.push(row.join(";"));
+    });
+
+    csvData[t.metric] = lines.join("\n") + "\n";
+    details[t.key] = {
+      success: true,
+      periods: dateLabels.filter(Boolean).length,
+      ukers: ukerList.length
+    };
+  }
+
+  return { csvData, details };
+}
+
+function setCcExcelModalStatus(msg, isError = false) {
+  if (!elements.ccExcelUploadStatus) return;
+  elements.ccExcelUploadStatus.style.display = msg ? "inline-block" : "none";
+  elements.ccExcelUploadStatus.textContent = msg;
+  elements.ccExcelUploadStatus.classList.toggle("error", Boolean(isError));
+}
+
+async function applyImportedCcCsvData(csvData, savedToDisk, summaryLabel) {
+  for (const metric of ["savol", "new_user"]) {
+    if (csvData && csvData[metric]) {
+      if (savedToDisk) {
+        localStorage.removeItem(`cc_override_${metric}`);
+        localStorage.removeItem(`cc_override_mode_${metric}`);
+      } else {
+        localStorage.setItem(`cc_override_${metric}`, csvData[metric]);
+        localStorage.setItem(`cc_override_mode_${metric}`, "local_only");
+      }
+    }
+  }
+
+  if (elements.ccManualModal && elements.ccManualModal.style.display !== "none") {
+    await loadCcModalDataset(ccModalCurrentMetric, ccModalCurrentDate);
+  }
+
+  if (state.currentCategory === "cc") {
+    await loadData();
+  }
+
+  const diskStatus = savedToDisk ? "tersimpan ke CSV server" : "tersimpan di browser";
+  const statusMsg = `✅ Sheet SAVOL & NEW USER dari ${summaryLabel} berhasil diupdate (${diskStatus})!`;
+  setCcExcelModalStatus(statusMsg, false);
+  showToast(statusMsg, "success");
+}
+
+async function handleCcExcelFileUpload(file) {
+  if (!file) return;
+  setCcExcelModalStatus(`⏳ Memproses file ${file.name} (Sheet SAVOL & NEW USER)...`, false);
+  showToast(`⏳ Mengekstrak sheet SAVOL & NEW USER dari ${file.name}...`, "info");
+
+  let savedToDisk = false;
+  let csvData = null;
+
+  // 1. Coba upload langsung ke save_cc.php untuk ekstraksi & simpan ke disk
+  try {
+    const formData = new FormData();
+    formData.append("excel_file", file);
+    const resp = await fetch("save_cc.php", {
+      method: "POST",
+      body: formData
+    });
+    if (resp.ok) {
+      const resJson = await resp.json();
+      if (resJson && resJson.success && resJson.csvData) {
+        savedToDisk = true;
+        csvData = resJson.csvData;
+      }
+    }
+  } catch (err) {
+    console.warn("Upload langsung ke save_cc.php gagal, menggunakan parser Excel browser:", err);
+  }
+
+  // 2. Fallback: parse di browser dengan SheetJS jika backend upload tidak tersedia
+  if (!csvData) {
+    try {
+      const parsed = await parseCcExcelClientSide(file);
+      csvData = parsed.csvData;
+
+      try {
+        const resp = await fetch("save_cc.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "save_bulk_csv",
+            csvData: csvData
+          })
+        });
+        if (resp.ok) {
+          const resJson = await resp.json();
+          if (resJson && resJson.success) {
+            savedToDisk = true;
+          }
+        }
+      } catch (e) {
+        console.warn("save_bulk_csv gagal:", e);
+      }
+    } catch (parseErr) {
+      console.error("Gagal membaca file Excel CC:", parseErr);
+      setCcExcelModalStatus(`❌ Gagal: ${parseErr.message}`, true);
+      showToast(`❌ Gagal memproses file Excel: ${parseErr.message}`, "error");
+      return;
+    }
+  }
+
+  await applyImportedCcCsvData(csvData, savedToDisk, file.name);
+}
+
+async function syncCcFromLocalExcel() {
+  setCcExcelModalStatus("⏳ Menarik data dari C:\\Dashboard CC\\DASHBOARD CC FINAL (1).xlsx...", false);
+  showToast("⏳ Mengekspor sheet SAVOL & NEW USER dari C:\\Dashboard CC...", "info");
+
+  try {
+    const resp = await fetch("save_cc.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "sync_local" })
+    });
+    const resJson = await resp.json();
+    if (!resp.ok || !resJson.success) {
+      throw new Error(resJson.message || "Gagal mengekspor dari file lokal");
+    }
+    await applyImportedCcCsvData(resJson.csvData, true, resJson.sourceFile || "DASHBOARD CC FINAL (1).xlsx");
+  } catch (err) {
+    console.error("Sync local Excel error:", err);
+    setCcExcelModalStatus(`❌ Gagal sync lokal: ${err.message}`, true);
+    showToast(`❌ Gagal sync lokal: ${err.message}. Silakan gunakan tombol Upload Excel CC.`, "error");
+  }
 }
 
 function downloadCcModalCsv() {
@@ -3635,5 +3911,58 @@ function initCcManualModal() {
 
   if (elements.ccDownloadCsvBtn) {
     elements.ccDownloadCsvBtn.addEventListener("click", downloadCcModalCsv);
+  }
+
+  // Direct Excel Upload & Local Sync listeners
+  const triggerFilePicker = () => {
+    if (elements.ccExcelFileInput) {
+      elements.ccExcelFileInput.value = "";
+      elements.ccExcelFileInput.click();
+    }
+  };
+
+  if (elements.uploadCcExcelTopBtn) {
+    elements.uploadCcExcelTopBtn.addEventListener("click", triggerFilePicker);
+  }
+  if (elements.uploadCcExcelInlineBtn) {
+    elements.uploadCcExcelInlineBtn.addEventListener("click", triggerFilePicker);
+  }
+
+  if (elements.ccExcelFileInput) {
+    elements.ccExcelFileInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) handleCcExcelFileUpload(file);
+    });
+  }
+
+  if (elements.ccExcelModalInput) {
+    elements.ccExcelModalInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) handleCcExcelFileUpload(file);
+    });
+  }
+
+  const bannerEl = document.querySelector(".cc-excel-upload-banner");
+  if (bannerEl) {
+    bannerEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      bannerEl.classList.add("drag-over");
+    });
+    bannerEl.addEventListener("dragleave", () => {
+      bannerEl.classList.remove("drag-over");
+    });
+    bannerEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      bannerEl.classList.remove("drag-over");
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) handleCcExcelFileUpload(file);
+    });
+  }
+
+  if (elements.syncCcLocalTopBtn) {
+    elements.syncCcLocalTopBtn.addEventListener("click", syncCcFromLocalExcel);
+  }
+  if (elements.ccModalSyncLocalBtn) {
+    elements.ccModalSyncLocalBtn.addEventListener("click", syncCcFromLocalExcel);
   }
 }

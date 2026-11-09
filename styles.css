@@ -2227,3 +2227,84 @@ body::before {
   display: flex;
   gap: 0.75rem;
 }
+
+/* CC Excel Direct Upload Banner */
+.cc-excel-upload-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+  border: 1.5px dashed rgba(16, 185, 129, 0.45);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.cc-excel-upload-banner.drag-over {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.cc-excel-upload-left {
+  flex: 1;
+  min-width: 240px;
+}
+
+.cc-excel-badge-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.cc-excel-badge-title code,
+.cc-excel-desc code,
+#ccModalSyncLocalBtn code {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-primary);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.cc-excel-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.cc-excel-status {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  display: inline-block;
+}
+
+.cc-excel-status.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.cc-excel-upload-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.cc-upload-label-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  font-weight: 600;
+}
+
