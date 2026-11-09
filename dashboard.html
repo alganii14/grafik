@@ -86,9 +86,6 @@
               <button type="button" class="btn btn-sm btn-primary btn-cc-upload" id="uploadCcExcelTopBtn" style="display: none;" title="Upload file Excel CC (otomatis baca sheet SAVOL & NEW USER)">
                 <span>📤</span> Upload Excel CC
               </button>
-              <button type="button" class="btn btn-sm btn-secondary btn-cc-sync" id="syncCcLocalTopBtn" style="display: none;" title="Tarik otomatis dari C:\Dashboard CC\DASHBOARD CC FINAL (1).xlsx">
-                <span>⚡</span> Sync File Lokal
-              </button>
               <button type="button" class="btn btn-sm btn-outline btn-cc-manual" id="openCcManualModalBtn" style="display: none;" title="Buka form kelola & input data CC">
                 <span>📝</span> Input / Kelola CC
               </button>
@@ -393,9 +390,6 @@
                 <span>📤 Pilih / Drop File Excel (.xlsx)</span>
               </label>
               <input type="file" id="ccExcelModalInput" accept=".xlsx,.xlsm,.xls" style="display: none;" />
-              <button type="button" class="btn btn-secondary btn-sm" id="ccModalSyncLocalBtn" title="Ekspor langsung dari C:\Dashboard CC\DASHBOARD CC FINAL (1).xlsx">
-                ⚡ Sync dari <code>C:\Dashboard CC\DASHBOARD CC FINAL (1)</code>
-              </button>
             </div>
           </div>
 
@@ -485,7 +479,7 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=14"></script>
     <script>
       const logoutForm = document.getElementById('logoutForm');
 

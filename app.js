@@ -288,12 +288,10 @@ const elements = {
   openCcManualModalBtn: document.getElementById("openCcManualModalBtn"),
   openCcManualModalInlineBtn: document.getElementById("openCcManualModalInlineBtn"),
   uploadCcExcelTopBtn: document.getElementById("uploadCcExcelTopBtn"),
-  syncCcLocalTopBtn: document.getElementById("syncCcLocalTopBtn"),
   uploadCcExcelInlineBtn: document.getElementById("uploadCcExcelInlineBtn"),
   ccExcelFileInput: document.getElementById("ccExcelFileInput"),
   ccExcelModalInput: document.getElementById("ccExcelModalInput"),
   ccExcelDropzone: document.getElementById("ccExcelDropzone"),
-  ccModalSyncLocalBtn: document.getElementById("ccModalSyncLocalBtn"),
   ccExcelUploadStatus: document.getElementById("ccExcelUploadStatus"),
   ccManualModal: document.getElementById("ccManualModal"),
   closeCcManualModalBtn: document.getElementById("closeCcManualModalBtn"),
@@ -842,9 +840,6 @@ function syncModeUI() {
   }
   if (elements.uploadCcExcelTopBtn) {
     elements.uploadCcExcelTopBtn.style.display = isCc ? "inline-flex" : "none";
-  }
-  if (elements.syncCcLocalTopBtn) {
-    elements.syncCcLocalTopBtn.style.display = isCc ? "inline-flex" : "none";
   }
 
   const monthSelectorLabel = document.getElementById('monthSelectorLabel') || document.querySelector('.month-chip-group label');
@@ -3751,28 +3746,6 @@ async function handleCcExcelFileUpload(file) {
   await applyImportedCcCsvData(csvData, savedToDisk, file.name);
 }
 
-async function syncCcFromLocalExcel() {
-  setCcExcelModalStatus("⏳ Menarik data dari C:\\Dashboard CC\\DASHBOARD CC FINAL (1).xlsx...", false);
-  showToast("⏳ Mengekspor sheet SAVOL & NEW USER dari C:\\Dashboard CC...", "info");
-
-  try {
-    const resp = await fetch("save_cc.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "sync_local" })
-    });
-    const resJson = await resp.json();
-    if (!resp.ok || !resJson.success) {
-      throw new Error(resJson.message || "Gagal mengekspor dari file lokal");
-    }
-    await applyImportedCcCsvData(resJson.csvData, true, resJson.sourceFile || "DASHBOARD CC FINAL (1).xlsx");
-  } catch (err) {
-    console.error("Sync local Excel error:", err);
-    setCcExcelModalStatus(`❌ Gagal sync lokal: ${err.message}`, true);
-    showToast(`❌ Gagal sync lokal: ${err.message}. Silakan gunakan tombol Upload Excel CC.`, "error");
-  }
-}
-
 function downloadCcModalCsv() {
   const csvContent = ccModalRawLines.join("\r\n") + "\r\n";
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -3957,12 +3930,5 @@ function initCcManualModal() {
       const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (file) handleCcExcelFileUpload(file);
     });
-  }
-
-  if (elements.syncCcLocalTopBtn) {
-    elements.syncCcLocalTopBtn.addEventListener("click", syncCcFromLocalExcel);
-  }
-  if (elements.ccModalSyncLocalBtn) {
-    elements.ccModalSyncLocalBtn.addEventListener("click", syncCcFromLocalExcel);
   }
 }
